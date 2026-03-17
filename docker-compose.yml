@@ -1,0 +1,7 @@
+services:
+  tg-jvav-bot:
+    build: .
+    container_name: tg-jvav-bot
+    restart: unless-stopped
+    env_file:
+      - .env
