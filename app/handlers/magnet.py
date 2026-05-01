@@ -44,7 +44,10 @@ async def run_magnet_reply(msg: Message, query: str) -> None:
                 await waiting.delete()
             except Exception:
                 pass
-            await send_photo_with_fallback(msg, av_meta.get("img"), "\n".join(detail_lines), shared.config.proxy_addr)
+            try:
+                await send_photo_with_fallback(msg, av_meta.get("img"), "\n".join(detail_lines), shared.config.proxy_addr)
+            except Exception:
+                logging.getLogger(__name__).warning("发送封面图片失败", exc_info=True)
         else:
             await waiting.edit_text("正在搜索磁力，请稍等...")
         messages = format_magnet_messages(query, items)
