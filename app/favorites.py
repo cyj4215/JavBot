@@ -31,6 +31,7 @@ class FavoritesManager:
 
         self.db_path = db_path
         self._lock = threading.Lock()
+        self._conn = None
         logger.info(f"初始化收藏管理器，数据库路径: {self.db_path}")
         self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self._init_db()
