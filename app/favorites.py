@@ -11,7 +11,7 @@ import sqlite3
 import threading
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class FavoritesManager:
         self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self._init_db()
         atexit.register(self.close)
-        logger.info(f"收藏管理器初始化完成")
+        logger.info("收藏管理器初始化完成")
 
     def __del__(self):
         self.close()
@@ -265,7 +265,7 @@ class FavoritesManager:
                 where_clause = "WHERE user_id = ? AND (created_at < ? OR (created_at = ? AND id < ?))"
                 where_params: tuple[Any, ...] = (user_id, created_at_val, created_at_val, row_id_val)
                 count_c = self._conn.cursor()
-                count_c.execute(f"SELECT COUNT(*) FROM favorites WHERE user_id = ?", (user_id,))
+                count_c.execute("SELECT COUNT(*) FROM favorites WHERE user_id = ?", (user_id,))
                 total = count_c.fetchone()[0]
             else:
                 where_clause = "WHERE user_id = ?"

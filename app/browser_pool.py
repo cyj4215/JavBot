@@ -319,7 +319,6 @@ def _parse_javdb_search(html: str, star_name: str, limit: int) -> List[Dict[str,
     from bs4 import BeautifulSoup
 
     soup = BeautifulSoup(html, "html.parser")
-    works: List[Dict[str, Any]] = []
 
     # 检查是否还是 CF 页面
     title = soup.find("title")

@@ -3,14 +3,14 @@ from __future__ import annotations
 import html
 import re
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 if TYPE_CHECKING:
     from .service import ActressProfile
 
-from .secure_callback import short_callback, resolve_callback
+from .secure_callback import short_callback as _short_callback
 
 
 def format_profile(
@@ -51,7 +51,7 @@ def format_profile(
     star_name = html.escape(profile.star_name or "")
     star_id = html.escape(profile.star_id or "")
     lines = [
-        f"<b>👩 女优信息</b>",
+        "<b>👩 女优信息</b>",
         f"<b>🎯 姓名：</b><code>{star_name}</code>",
         f"<b>🆔 演员ID：</b><code>{star_id}</code>",
     ]

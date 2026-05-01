@@ -312,7 +312,7 @@ async def favorites_latest_cmd(update: Update, context: ContextTypes.DEFAULT_TYP
 
         batch_size = 5
         for i in range(0, len(all_latest_works), batch_size):
-            batch = all_latest_works[i:i+batch_size]
+            batch = all_latest_works[i:i + batch_size]
 
             lines = ["<b>🎬 收藏女优最新作品</b>", ""]
 

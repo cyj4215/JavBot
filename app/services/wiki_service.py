@@ -114,7 +114,7 @@ class WikiService:
 
         info: Dict[str, Any] = {"birth_date": "", "height": "", "measurements": "", "cup": "", "socials": []}
         if not wiki_url:
-            logger.debug(f"wiki_url为空，无法获取extra_info")
+            logger.debug("wiki_url为空，无法获取extra_info")
             return info
 
         logger.debug(f"开始获取extra_info，wiki_url: {wiki_url}")

@@ -5,7 +5,6 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-import requests
 from jvav import JavBusUtil, JavDbUtil
 
 from .cache import TTLCache
