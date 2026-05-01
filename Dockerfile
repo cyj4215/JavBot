@@ -35,4 +35,9 @@ RUN chmod +x /app/docker-entrypoint.sh
 # Install Chromium browser for Playwright (will be cached in volume)
 RUN playwright install chromium
 
+# Run as non-root user
+RUN groupadd -r javbot && useradd -r -g javbot -d /app -s /sbin/nologin javbot && \
+    chown -R javbot:javbot /app
+USER javbot
+
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

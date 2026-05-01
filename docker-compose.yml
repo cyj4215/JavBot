@@ -7,3 +7,23 @@ services:
       - .env
     volumes:
       - ./data:/app/data
+    environment:
+      - FAVORITES_DB_PATH=/app/data/favorites.db
+      - CALLBACK_DB_PATH=/app/data/callbacks.json
+      - PLAYWRIGHT_BROWSERS_PATH=/app/data/playwright
+      # 代理配置（自动检测系统代理）
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - http_proxy=${http_proxy:-}
+      - https_proxy=${https_proxy:-}
+      - NO_PROXY=localhost,127.0.0.1
+    dns:
+      - 223.5.5.5
+      - 119.29.29.29
+    entrypoint: ["/app/docker-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "from app.config import BotConfig; BotConfig.from_env(); print('ok')"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
