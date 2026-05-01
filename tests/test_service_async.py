@@ -1,8 +1,49 @@
 """Test that query_profile_async does not block the asyncio event loop."""
 import asyncio
+import sys
 import time
+import types
 
 import pytest
+
+# jvav requires Python 3.11 and system deps — mock it so tests run anywhere.
+_jvav = types.ModuleType("jvav")
+
+
+class _FakeJavBusUtil:
+    def __init__(self, **kw):
+        pass
+
+    def check_star_exists(self, _name):
+        return 200, None
+
+    def fuzzy_search_stars(self, _name):
+        return 404, []
+
+    def get_new_ids_by_star_name(self, _name):
+        return 200, []
+
+    def get_id_by_star_name(self, _name):
+        return 200, []
+
+    def get_av_by_id(self, _code, **kw):
+        return 200, {}
+
+    def get_av_magnets(self, _code, **kw):
+        return 200, []
+
+
+class _FakeJavDbUtil:
+    def __init__(self, **kw):
+        pass
+
+    def get_av_by_id(self, _code, **kw):
+        return 200, {}
+
+
+_jvav.JavBusUtil = _FakeJavBusUtil
+_jvav.JavDbUtil = _FakeJavDbUtil
+sys.modules["jvav"] = _jvav
 
 
 class TestQueryProfileAsync:
