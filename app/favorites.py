@@ -299,6 +299,7 @@ class FavoritesManager:
                     try:
                         favorite['actress_data'] = json.loads(row[3])
                     except Exception:
+                        logger.debug("解析收藏数据 JSON 失败", exc_info=True)
                         favorite['actress_data'] = None
                 favorites.append(favorite)
 
