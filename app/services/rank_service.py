@@ -85,8 +85,11 @@ class RankService:
         except asyncio.TimeoutError:
             logging.warning("排行榜获取超时(%ds)，返回缓存", _OVERALL_TIMEOUT_S)
 
-        fallback = self.rank_cache.get(("rank", limit, 1))
-        return fallback or []
+        if page == 1:
+            fallback = self.rank_cache.get(("rank", limit, 1))
+            if fallback:
+                return fallback
+        return []
 
     async def _try_javdb_rankings(
         self, limit: int, page: int, timeout: int = _FETCH_TIMEOUT_MS

@@ -182,6 +182,7 @@ def looks_like_av_id(text: str) -> bool:
 def format_rankings(
     stars: List[Dict[str, Any]],
     page: int,
+    limit: int = 20,
     _t: Callable[..., str] = lambda k, *a: k,
 ) -> str:
     if not stars:
@@ -192,7 +193,7 @@ def format_rankings(
         _t("rank_source", page),
         "",
     ]
-    start = (page - 1) * 20 + 1
+    start = (page - 1) * limit + 1
     for idx, star in enumerate(stars, start=start):
         name = html.escape(star.get("name", "未知"))
         actress_id = star.get("id", "")

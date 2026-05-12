@@ -379,6 +379,28 @@ class FavoritesManager:
             logger.error(f"获取最常查询收藏失败: {e}")
             return []
 
+    async def get_last_query_time_map(self, user_id: int) -> Dict[str, str]:
+        """Get the most recent query time for each favorite actress."""
+        try:
+            rows = await self._select_all(
+                """
+                SELECT f.actress_name, MAX(fq.query_time) AS last_query
+                FROM favorites f
+                LEFT JOIN favorite_queries fq ON fq.user_id = f.user_id AND fq.actress_name = f.actress_name
+                WHERE f.user_id = %s
+                GROUP BY f.actress_name
+                """,
+                (user_id,),
+            )
+            result: Dict[str, str] = {}
+            for r in rows:
+                val = r.get("last_query")
+                result[r["actress_name"]] = str(val)[:16] if val and val is not None else ""
+            return result
+        except Exception as e:
+            logger.error(f"获取查询时间失败: {e}")
+            return {}
+
     # ------------------------------------------------------------------
     # Actress works tracking
     # ------------------------------------------------------------------

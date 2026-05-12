@@ -4,7 +4,8 @@ import asyncio
 import html
 import logging
 import re
-from typing import TYPE_CHECKING, Any, List, Tuple
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
@@ -38,59 +39,116 @@ def _parse_actress_names(query: str) -> List[str]:
     return actress_names
 
 
-def _render_favorites_page(favorites: list[dict[str, Any]], page: int, favorites_per_page: int) -> Tuple[str, InlineKeyboardMarkup]:
-    total_favorites = len(favorites)
-    total_pages = (total_favorites + favorites_per_page - 1) // favorites_per_page
+_SORT_LABELS = {"date": "收藏时间", "name": "名称", "recent": "最近查询"}
+
+
+def _time_ago(dt_str: str) -> str:
+    if not dt_str:
+        return ""
+    try:
+        dt = datetime.fromisoformat(dt_str)
+    except (ValueError, TypeError):
+        return dt_str[:10] if dt_str else ""
+    delta = datetime.now() - dt
+    if delta.days > 30:
+        return f"{delta.days // 30}月前"
+    if delta.days > 0:
+        return f"{delta.days}天前"
+    if delta.seconds >= 3600:
+        return f"{delta.seconds // 3600}小时前"
+    if delta.seconds >= 60:
+        return f"{delta.seconds // 60}分钟前"
+    return "刚刚"
+
+
+def _sort_favorites(favorites: list[dict[str, Any]], sort: str, last_query_map: Dict[str, str]) -> list[dict[str, Any]]:
+    if sort == "name":
+        return sorted(favorites, key=lambda f: f["actress_name"].lower())
+    if sort == "recent":
+        def _sort_key(f):
+            t = last_query_map.get(f["actress_name"], "")
+            return t if t else "\x00"
+        return sorted(favorites, key=_sort_key, reverse=True)
+    return sorted(favorites, key=lambda f: (f.get("created_at") or ""), reverse=True)
+
+
+def _render_favorites_page(
+    favorites: list[dict[str, Any]],
+    page: int,
+    favorites_per_page: int,
+    sort: str = "date",
+    last_query_map: Dict[str, str] = None,
+) -> Tuple[str, InlineKeyboardMarkup]:
+    if last_query_map is None:
+        last_query_map = {}
+
+    sorted_favs = _sort_favorites(favorites, sort, last_query_map)
+    total_favorites = len(sorted_favs)
+    total_pages = max(1, (total_favorites + favorites_per_page - 1) // favorites_per_page)
     page = max(1, min(page, total_pages))
 
     start_idx = (page - 1) * favorites_per_page
     end_idx = start_idx + favorites_per_page
-    page_favorites = favorites[start_idx:end_idx]
+    page_favorites = sorted_favs[start_idx:end_idx]
 
-    lines = ["<b>📚 我的收藏</b>", ""]
+    sort_label = _SORT_LABELS.get(sort, sort)
+    lines = [
+        "<b>📚 我的收藏</b>",
+        "━━━━━━━━━━━━━━━━━━━━",
+        f"排序: {sort_label}    共 {total_favorites} 位",
+        "",
+    ]
 
     for idx, fav in enumerate(page_favorites, start_idx + 1):
-        actress_name = html.escape(fav['actress_name'])
-        created_at = fav['created_at'][:10] if fav['created_at'] else "未知"
-        lines.append(f"{idx}. {actress_name} (收藏于: {created_at})")
+        name = html.escape(fav["actress_name"])
+        aid = html.escape(fav.get("actress_id") or "")
+        created = fav.get("created_at", "")[:10] if fav.get("created_at") else ""
 
-    lines.append("")
-    lines.append(f"共收藏 {total_favorites} 位女优")
+        id_part = f"🆔 {aid}" if aid else ""
+        star_part = f"⭐ {created[5:]}" if created else ""
+        line1 = f"  {idx}. <b>{name}</b>"
+        line2_parts = [p for p in [id_part, star_part] if p]
+        line2 = "  " + "  ".join(line2_parts) if line2_parts else ""
+
+        lq = last_query_map.get(fav["actress_name"], "")
+        query_part = f"🔍 上次查询: {_time_ago(lq)}" if lq else "🔍 未查询"
+        line3 = f"  {query_part}"
+
+        lines.append(line1)
+        if line2:
+            lines.append(line2)
+        lines.append(line3)
+        lines.append("")
+
+    lines.append("━━━━━━━━━━━━━━━━━━━━")
     if total_pages > 1:
         lines.append(f"第 {page}/{total_pages} 页")
-    lines.append("")
-    lines.append("点击名字可快速查询最新作品：")
-    lines.append("使用 /favlatest 查看所有收藏女优的最新作品")
 
     keyboard = []
     row = []
-    for idx, fav in enumerate(page_favorites, start_idx + 1):
-        actress_name = fav['actress_name']
-        display_name = actress_name[:15] + "..." if len(actress_name) > 15 else actress_name
-        row.append(InlineKeyboardButton(
-            f"{idx}. {display_name}",
-            callback_data=_short_callback("favquery", actress_name)
-        ))
-        if len(row) == 2:
+    for fav in page_favorites:
+        name = fav["actress_name"]
+        btn_label = name[:12] + "…" if len(name) > 12 else name
+        row.append(InlineKeyboardButton(f"🔍{btn_label}", callback_data=_short_callback("favquery", name)))
+        if len(row) == 3:
             keyboard.append(row)
             row = []
-
     if row:
         keyboard.append(row)
 
-    if total_pages > 1:
-        page_buttons = []
-        if page > 1:
-            page_buttons.append(InlineKeyboardButton("◀️ 上一页", callback_data=f"myfav:page:{page-1}"))
-        if page < total_pages:
-            page_buttons.append(InlineKeyboardButton("下一页 ▶️", callback_data=f"myfav:page:{page+1}"))
-        if page_buttons:
-            keyboard.append(page_buttons)
+    nav_row = []
+    if page > 1:
+        nav_row.append(InlineKeyboardButton("◀️", callback_data=f"myfav:page:{page-1}:{sort}"))
+    nav_row.append(InlineKeyboardButton(f"↕️{sort_label}", callback_data=f"myfav:sort:{sort}:{page}"))
+    if page < total_pages:
+        nav_row.append(InlineKeyboardButton("▶️", callback_data=f"myfav:page:{page+1}:{sort}"))
+    keyboard.append(nav_row)
 
-    keyboard.append([InlineKeyboardButton("📰 查看所有收藏的最新作品", callback_data="favlatest:all")])
+    keyboard.append([
+        InlineKeyboardButton("📰 最新作品", callback_data="favlatest:all"),
+    ])
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    return "\n".join(lines), reply_markup
+    return "\n".join(lines), InlineKeyboardMarkup(keyboard)
 
 
 def _empty_fav_msg(_) -> str:
@@ -100,7 +158,7 @@ def _empty_fav_msg(_) -> str:
 async def _get_user_favorites(user_id: int):
     """Get favorites for a user. Returns the list or None (with empty favorites message logic)."""
     favorites_manager = await get_favorites_manager()
-    result = await favorites_manager.get_favorites(user_id, limit=100)
+    result = await favorites_manager.get_favorites(user_id, limit=200)
     favorites = result.get('items', []) if isinstance(result, dict) else result
     if not favorites:
         return None
@@ -263,13 +321,21 @@ async def my_favorites_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, m
     def _(key, *a):
         return shared.service.i18n.t(key, lang, *a)
 
+    sort = "date"
+    if context.args:
+        arg = context.args[0].lower()
+        if arg in _SORT_LABELS:
+            sort = arg
+
     favorites_per_page = 10
+    fav_mgr = await get_favorites_manager()
     favorites = await _get_user_favorites(user.id)
     if not favorites:
         await msg.reply_text(_("fav_empty"))
         return
 
-    text, reply_markup = _render_favorites_page(favorites, 1, favorites_per_page)
+    last_query_map = await fav_mgr.get_last_query_time_map(user.id)
+    text, reply_markup = _render_favorites_page(favorites, page, favorites_per_page, sort=sort, last_query_map=last_query_map)
 
     await msg.reply_text(
         text,
@@ -371,9 +437,12 @@ async def favorite_query_callback(update: Update, context: ContextTypes.DEFAULT_
 
     if data.startswith("myfav:page:"):
         logging.info(f"收到分页回调: {data}")
-        page = int(data[len("myfav:page:"):])
+        parts = data[len("myfav:page:"):].split(":", 1)
+        page = int(parts[0])
+        sort = parts[1] if len(parts) > 1 else "date"
         await q.answer()
         user = update.effective_user
+        fav_mgr = await get_favorites_manager()
 
         favorites_per_page = 10
         favorites = await _get_user_favorites(user.id)
@@ -381,7 +450,36 @@ async def favorite_query_callback(update: Update, context: ContextTypes.DEFAULT_
             await q.edit_message_text(_("fav_empty"))
             return
 
-        text, reply_markup = _render_favorites_page(favorites, page, favorites_per_page)
+        last_query_map = await fav_mgr.get_last_query_time_map(user.id)
+        text, reply_markup = _render_favorites_page(favorites, page, favorites_per_page, sort=sort, last_query_map=last_query_map)
+
+        await q.edit_message_text(
+            text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=reply_markup,
+            disable_web_page_preview=True
+        )
+        return
+
+    if data.startswith("myfav:sort:"):
+        logging.info(f"收到排序回调: {data}")
+        parts = data[len("myfav:sort:"):].split(":", 1)
+        current_sort = parts[0]
+        page = int(parts[1]) if len(parts) > 1 else 1
+        sort_order = ["date", "name", "recent"]
+        next_sort = sort_order[(sort_order.index(current_sort) + 1) % len(sort_order)] if current_sort in sort_order else "date"
+        await q.answer(f"排序切换: {_SORT_LABELS.get(next_sort, next_sort)}")
+        user = update.effective_user
+        fav_mgr = await get_favorites_manager()
+
+        favorites_per_page = 10
+        favorites = await _get_user_favorites(user.id)
+        if not favorites:
+            await q.edit_message_text(_("fav_empty"))
+            return
+
+        last_query_map = await fav_mgr.get_last_query_time_map(user.id)
+        text, reply_markup = _render_favorites_page(favorites, page, favorites_per_page, sort=next_sort, last_query_map=last_query_map)
 
         await q.edit_message_text(
             text,

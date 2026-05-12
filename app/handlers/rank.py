@@ -84,7 +84,7 @@ async def _send_rank_result(
         cached_stars = shared.service.get_rank_cache(("rank", limit, page))
         if cached_stars:
             text = (
-                f"⚠️ 最新数据获取失败，显示缓存数据\n\n{format_rankings(cached_stars, page, _t=_)}"
+                f"⚠️ 最新数据获取失败，显示缓存数据\n\n{format_rankings(cached_stars, page, limit=limit, _t=_)}"
             )
             kwargs = dict(text=text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=build_rank_keyboard(limit, page))
             if is_edit:
@@ -94,7 +94,7 @@ async def _send_rank_result(
         else:
             await _handle_rank_error(target, limit, page, is_edit=is_edit)
     else:
-        kwargs = dict(text=format_rankings(stars, page, _t=_), parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=build_rank_keyboard(limit, page))
+        kwargs = dict(text=format_rankings(stars, page, limit=limit, _t=_), parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=build_rank_keyboard(limit, page))
         if is_edit:
             await target.edit_message_text(**kwargs)
         else:
