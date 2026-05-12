@@ -86,20 +86,22 @@ class WikiService:
             self.wiki_page_cache.set(cache_key, result)
             return result
         except Exception as e:
-            logger.debug("维基百科查询异常: %s", e, exc_info=True)
+            logger.warning("维基百科查询异常: %s", e, exc_info=True)
             return {}
 
-    def wiki_aliases(self, name: str, normalize_name_fn, contains_cjk_fn) -> List[str]:
+    def wiki_aliases(self, name: str) -> List[str]:
+        from .text_utils import contains_cjk, normalize_name
+
         aliases: List[str] = []
         seen: set = set()
 
         def add(v: str) -> None:
-            vv = normalize_name_fn(v)
+            vv = normalize_name(v)
             if vv and vv not in seen:
                 seen.add(vv)
                 aliases.append(vv)
 
-        if contains_cjk_fn(name):
+        if contains_cjk(name):
             p = self.wiki_page_by_lang(name, from_lang="zh", to_lang="ja")
             add(p.get("title", ""))
             p = self.wiki_page_by_lang(name, from_lang="zh", to_lang="en")

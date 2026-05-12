@@ -169,7 +169,6 @@ async def fetch_page(url: str, wait_selector: str = "body", timeout: int = 30000
     page = await context.new_page()
 
     try:
-        # 注入反检测脚本
         await page.add_init_script(_STEALTH_SCRIPT)
 
         logger.debug(f"导航到: {url}")
@@ -212,17 +211,14 @@ async def get_new_works_from_javdb(star_name: str, limit: int = 8) -> List[Dict[
     logger.info(f"通过 Playwright 搜索 JavDb: {star_name}")
 
     try:
-        # 第一步：搜索演员
         html = await fetch_page(search_url, wait_selector=".actor-box, .movie-list", timeout=60000)
         soup = BeautifulSoup(html, "html.parser")
 
-        # 检查是否还是 CF 页面
         title = soup.find("title")
         if title and ("moment" in title.text.lower() or "cloudflare" in title.text.lower()):
             logger.warning(f"Cloudflare 挑战未通过: {star_name}")
             return []
 
-        # 获取演员页面链接
         actor_box = soup.find(class_="actor-box")
         if not actor_box:
             logger.warning(f"未找到演员框，尝试直接解析: {star_name}")
@@ -237,7 +233,6 @@ async def get_new_works_from_javdb(star_name: str, limit: int = 8) -> List[Dict[
         actor_url = f"https://javdb.com{href}" if not href.startswith("http") else href
         logger.info(f"访问演员页面: {actor_url}")
 
-        # 第二步：访问演员页面获取作品
         actor_html = await fetch_page(actor_url, wait_selector=".movie-list", timeout=60000)
         actor_soup = BeautifulSoup(actor_html, "html.parser")
 
@@ -251,10 +246,7 @@ async def get_new_works_from_javdb(star_name: str, limit: int = 8) -> List[Dict[
 
 
 async def get_actors_from_javdb(limit: int = 20, page: int = 1, timeout: int = 25000) -> List[Dict[str, Any]]:
-    """通过 Playwright 从 JavDb 获取演员列表.
-
-    JavDb 的演员页面 /actors 提供了按人气排序的女优列表。
-    """
+    """通过 Playwright 从 JavDb 获取演员列表."""
     from bs4 import BeautifulSoup
 
     actors: List[Dict[str, Any]] = []
@@ -265,7 +257,6 @@ async def get_actors_from_javdb(limit: int = 20, page: int = 1, timeout: int = 2
         html = await fetch_page(url, wait_selector=".actor-box", timeout=timeout)
         soup = BeautifulSoup(html, "html.parser")
 
-        # 检查是否还是 CF 页面
         title = soup.find("title")
         if title and ("moment" in title.text.lower() or "cloudflare" in title.text.lower()):
             logger.warning("Cloudflare 挑战未通过: JavDb actors")
@@ -314,35 +305,6 @@ async def get_actors_from_javdb(limit: int = 20, page: int = 1, timeout: int = 2
         return []
 
 
-def _parse_javdb_search(html: str, star_name: str, limit: int) -> List[Dict[str, Any]]:
-    """解析 JavDb 搜索结果 HTML."""
-    from bs4 import BeautifulSoup
-
-    soup = BeautifulSoup(html, "html.parser")
-
-    # 检查是否还是 CF 页面
-    title = soup.find("title")
-    if title and ("moment" in title.text.lower() or "cloudflare" in title.text.lower()):
-        logger.warning(f"Cloudflare 挑战未通过: {star_name}")
-        return []
-
-    # 尝试找到演员页面链接
-    actor_link = None
-    actor_box = soup.find(class_="actor-box")
-    if actor_box:
-        a_tag = actor_box.find("a")
-        if a_tag and a_tag.get("href"):
-            actor_link = a_tag["href"]
-            if not actor_link.startswith("http"):
-                actor_link = f"https://javdb.com{actor_link}"
-
-    if not actor_link:
-        logger.warning(f"未找到演员页面链接: {star_name}")
-        return _parse_movie_list(soup, limit)
-
-    return _parse_movie_list(soup, limit)
-
-
 def _parse_movie_list(soup, limit: int) -> List[Dict[str, Any]]:
     """从 JavDb 页面解析作品列表."""
     works: List[Dict[str, Any]] = []
@@ -352,24 +314,19 @@ def _parse_movie_list(soup, limit: int) -> List[Dict[str, Any]]:
         items = movie_list.find_all("a", class_="box", limit=limit)
         for item in items:
             try:
-                # 番号可能在 <strong> 标签内
                 strong_tag = item.find("strong")
                 av_id = strong_tag.text.strip() if strong_tag else ""
 
-                # 或者 class="uid"
                 if not av_id:
                     uid_tag = item.find(class_="uid")
                     av_id = uid_tag.text.strip() if uid_tag else ""
 
-                # 标题
                 title_tag = item.find(class_="video-title")
                 title = ""
                 if title_tag:
-                    # 去掉番号部分
                     title_text = title_tag.get_text(strip=True)
                     title = title_text.replace(av_id, "").strip()
 
-                # 日期
                 meta_tag = item.find(class_="meta")
                 date = ""
                 if meta_tag:
@@ -378,13 +335,11 @@ def _parse_movie_list(soup, limit: int) -> List[Dict[str, Any]]:
                     if date_match:
                         date = date_match.group(1)
 
-                # 封面图
                 img_tag = item.find("img")
                 img = img_tag.get("src", "") if img_tag else ""
                 if not img:
                     img = img_tag.get("data-src", "") if img_tag else ""
 
-                # URL
                 url = item.get("href", "")
                 if url and not url.startswith("http"):
                     url = f"https://javdb.com{url}"

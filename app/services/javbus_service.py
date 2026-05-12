@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -27,6 +28,10 @@ class JavBusService:
         self.uncensored = uncensored
         self._magnet_search = magnet_search_module
         self._executor = ThreadPoolExecutor(max_workers=6)
+        atexit.register(self._cleanup)
+
+    def _cleanup(self) -> None:
+        self._executor.shutdown(wait=False)
 
     # ------------------------------------------------------------------
     # 公共方法
@@ -93,6 +98,7 @@ class JavBusService:
         from ..magnet_search import search_magnets
         javbus_magnets: List[Dict[str, Any]] = []
         try:
+            self._javbus_limiter.wait()
             code, magnets = self.javbus.get_av_magnets(av_id, is_uncensored=self.uncensored)
             if code == 200 and magnets:
                 javbus_magnets = [{"title": m.get("title", ""), "size": m.get("size", ""), "magnet": m.get("magnet", "")} for m in magnets[:limit]]

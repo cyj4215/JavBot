@@ -6,5 +6,6 @@ requests==2.32.4
 beautifulsoup4==4.14.3
 pypinyin==0.52.0
 lxml==5.4.0
-playwright==1.53.0
 wikipedia-api==0.8.1
+aiomysql==0.2.0
+cryptography==44.0.0

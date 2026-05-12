@@ -1,13 +1,12 @@
 import logging
-import time
-from collections import OrderedDict
-from threading import RLock
-from typing import Dict, List
+import os
+from typing import Dict, List, Optional
 
 import requests
-from requests.adapters import HTTPAdapter
 from bs4 import BeautifulSoup
-from urllib3.util.retry import Retry
+
+from .cache import TTLCache
+from .http_utils import build_retry_session
 
 BASE_URL = "https://sukebei.nyaa.si"
 DEFAULT_TIMEOUT = 20
@@ -16,52 +15,17 @@ DEFAULT_CACHE_TTL = 300
 DEFAULT_CACHE_SIZE = 512
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
-_CACHE = OrderedDict()
-_CACHE_LOCK = RLock()
+_cache = TTLCache(max_size=DEFAULT_CACHE_SIZE, default_ttl=DEFAULT_CACHE_TTL)
+_session: Optional[requests.Session] = None
 
 
-def _build_session() -> requests.Session:
-    retry = Retry(
-        total=3,
-        connect=3,
-        read=3,
-        backoff_factor=0.6,
-        status_forcelist=(429, 500, 502, 503, 504),
-        allowed_methods=frozenset(["GET"]),
-        raise_on_status=False,
-    )
-    adapter = HTTPAdapter(max_retries=retry, pool_connections=10, pool_maxsize=10)
-    session = requests.Session()
-    session.mount("http://", adapter)
-    session.mount("https://", adapter)
-    session.headers.update({"user-agent": UA})
-    return session
-
-
-_SESSION = _build_session()
-
-
-def _cache_get(key):
-    now = time.time()
-    with _CACHE_LOCK:
-        item = _CACHE.get(key)
-        if not item:
-            return None
-        expire_at, value = item
-        if expire_at < now:
-            _CACHE.pop(key, None)
-            return None
-        _CACHE.move_to_end(key)
-        return [dict(x) for x in value]
-
-
-def _cache_set(key, value):
-    expire_at = time.time() + DEFAULT_CACHE_TTL
-    with _CACHE_LOCK:
-        _CACHE[key] = (expire_at, [dict(x) for x in value])
-        _CACHE.move_to_end(key)
-        while len(_CACHE) > DEFAULT_CACHE_SIZE:
-            _CACHE.popitem(last=False)
+def _get_session() -> requests.Session:
+    global _session
+    if _session is None:
+        proxy_addr = os.getenv("HTTP_PROXY", "").strip()
+        _session = build_retry_session(proxy_addr=proxy_addr)
+        _session.headers.update({"user-agent": UA})
+    return _session
 
 
 def search_magnets(query: str, limit: int = DEFAULT_LIMIT, timeout: int = DEFAULT_TIMEOUT) -> List[Dict[str, str]]:
@@ -72,12 +36,12 @@ def search_magnets(query: str, limit: int = DEFAULT_LIMIT, timeout: int = DEFAUL
     limit = max(1, min(limit, 10))
     timeout = max(5, min(timeout, 60))
     cache_key = (q.lower(), limit)
-    cached = _cache_get(cache_key)
+    cached = _cache.get(cache_key)
     if cached is not None:
         return cached
 
     try:
-        resp = _SESSION.get(
+        resp = _get_session().get(
             f"{BASE_URL}/",
             params={"q": q},
             timeout=timeout,
@@ -115,7 +79,7 @@ def search_magnets(query: str, limit: int = DEFAULT_LIMIT, timeout: int = DEFAUL
             )
             if len(results) >= limit:
                 break
-        _cache_set(cache_key, results)
+        _cache.set(cache_key, results)
         return results
     except Exception as exc:
         logging.getLogger(__name__).warning("parse sukebei failed: %s", exc)

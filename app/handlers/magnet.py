@@ -34,6 +34,13 @@ async def run_magnet_reply(msg: Message, query: str) -> None:
             ),
             timeout=timeout,
         )
+        from ..fav_manager import get_favorites_manager
+        fav_mgr = await get_favorites_manager()
+        await fav_mgr.increment_stat("total_magnet_searches")
+        lang = shared.service.i18n.DEFAULT_LANG
+        def _(key, *a):
+            return shared.service.i18n.t(key, lang, *a)
+
         if av_meta.get("title"):
             detail_lines = ["<b>🎬 作品详情</b>"]
             detail_lines.append(f"<b>番号：</b><code>{html.escape(av_meta['id'])}</code>")
@@ -50,7 +57,7 @@ async def run_magnet_reply(msg: Message, query: str) -> None:
                 logging.getLogger(__name__).warning("发送封面图片失败", exc_info=True)
         else:
             await waiting.edit_text("正在搜索磁力，请稍等...")
-        messages = format_magnet_messages(query, items)
+        messages = format_magnet_messages(query, items, _t=_)
         for m in messages:
             await msg.reply_text(
                 m,

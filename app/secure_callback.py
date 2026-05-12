@@ -180,10 +180,10 @@ class SecureCallbackStore:
             return None
 
         with self._lock:
-            stored = self._store.get((prefix, key))
+            stored = self._store.pop((prefix, key), None)
 
         if stored is None:
-            logger.warning(f"Callback not found: {prefix}:{key}")
+            logger.warning(f"Callback not found or already used: {prefix}:{key}")
             return None
 
         data, _ = stored
@@ -192,7 +192,8 @@ class SecureCallbackStore:
             logger.warning(f"Invalid signature for callback: {prefix}:{key}")
             return None
 
-        logger.debug(f"Resolved callback: {prefix}:{key}")
+        self._dirty = True
+        logger.debug(f"Resolved and consumed callback: {prefix}:{key}")
         return data
 
     def _is_legacy_format(self, token: str) -> bool:

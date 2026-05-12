@@ -1,22 +1,42 @@
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: tg-jvav-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-javbot}
+      MYSQL_USER: ${MYSQL_USER:-javbot}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-javbot}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   tg-jvav-bot:
     build: .
     container_name: tg-jvav-bot
     restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
     env_file:
       - .env
     volumes:
       - ./data:/app/data
     environment:
-      - FAVORITES_DB_PATH=/app/data/favorites.db
       - CALLBACK_DB_PATH=/app/data/callbacks.json
-      - PLAYWRIGHT_BROWSERS_PATH=/app/data/playwright
+      - MYSQL_HOST=mysql
       # 代理配置（自动检测系统代理）
       - HTTP_PROXY=${HTTP_PROXY:-}
       - HTTPS_PROXY=${HTTPS_PROXY:-}
       - http_proxy=${http_proxy:-}
       - https_proxy=${https_proxy:-}
-      - NO_PROXY=localhost,127.0.0.1
+      - NO_PROXY=localhost,127.0.0.1,mysql
     dns:
       - 223.5.5.5
       - 119.29.29.29
@@ -27,3 +47,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+
+volumes:
+  mysql_data:

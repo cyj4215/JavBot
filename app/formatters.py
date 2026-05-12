@@ -3,30 +3,36 @@ from __future__ import annotations
 import html
 import re
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 if TYPE_CHECKING:
-    from .service import ActressProfile
+    from .models import ActressProfile
 
 from .secure_callback import short_callback as _short_callback
 
 
 def format_profile(
-    profile: ActressProfile, user_id: Optional[int] = None, *, is_favorite: bool = False
+    profile: ActressProfile,
+    user_id: Optional[int] = None,
+    *,
+    is_favorite: bool = False,
+    _t: Callable[..., str] = lambda k, *a: k,
 ) -> Tuple[str, Optional[InlineKeyboardMarkup]]:
+    def esc(s): return html.escape(s) if s else ""
+
     if not profile.found:
-        query = html.escape(profile.query)
+        query = esc(profile.query)
         lines = [
-            "<b>🔍 查询结果</b>",
-            f"❌ 未找到：<code>{query}</code>",
+            "<b>🔍 " + _t("search_result") + "</b>",
+            _t("search_no_result", query),
         ]
         if profile.suggestions:
             lines.append("")
-            lines.append("<b>💡 你可能想查：</b>")
-            keyboard_rows: List[List[InlineKeyboardButton]] = []
-            row: List[InlineKeyboardButton] = []
+            lines.append("<b>💡 " + _t("search_suggestions") + "</b>")
+            keyboard_rows = []
+            row = []
             for idx, name in enumerate(profile.suggestions[:8], 1):
                 row.append(InlineKeyboardButton(name, callback_data=_short_callback("search", name)))
                 if len(row) == 2:
@@ -34,108 +40,110 @@ def format_profile(
                     row = []
             if row:
                 keyboard_rows.append(row)
-            keyboard_rows.append([InlineKeyboardButton("🔄 返回主菜单", callback_data="menu:search")])
+            keyboard_rows.append([InlineKeyboardButton(_t("menu_return"), callback_data="menu:search")])
             lines.append("")
-            lines.append("点击下方按钮快速查询：")
+            lines.append(_t("search_click_button"))
             return "\n".join(lines), InlineKeyboardMarkup(keyboard_rows)
         else:
             lines.append("")
-            lines.append("💡 请尝试中文全名、日文名或英文名。")
+            lines.append(_t("search_try_full_name"))
             lines.append("")
-            lines.append("用法：<code>/s 名字</code>")
+            lines.append(_t("search_usage"))
             no_result_markup = InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔄 返回主菜单", callback_data="menu:search")]
+                [InlineKeyboardButton(_t("menu_return"), callback_data="menu:search")]
             ])
             return "\n".join(lines), no_result_markup
 
-    star_name = html.escape(profile.star_name or "")
-    star_id = html.escape(profile.star_id or "")
+    star_name = esc(profile.star_name)
+    star_id = esc(profile.star_id)
     lines = [
-        "<b>👩 女优信息</b>",
-        f"<b>🎯 姓名：</b><code>{star_name}</code>",
-        f"<b>🆔 演员ID：</b><code>{star_id}</code>",
+        "<b>👩 " + _t("profile_title") + "</b>",
+        f"<b>{_t('profile_name')}</b><code>{star_name}</code>",
+        f"<b>{_t('profile_id')}</b><code>{star_id}</code>",
     ]
     if profile.matched_name and profile.matched_name != profile.query:
-        lines.append(f"<b>🔍 匹配关键词：</b>{html.escape(profile.matched_name)}")
+        lines.append(f"<b>{_t('profile_match')}</b>{esc(profile.matched_name)}")
     if profile.wiki_url:
-        title = html.escape(profile.wiki_title or profile.star_name or "")
-        wiki_url = html.escape(profile.wiki_url, quote=True)
-        lines.append(f"<b>📚 Wiki：</b><a href=\"{wiki_url}\">{title}</a>")
+        title = esc(profile.wiki_title or profile.star_name)
+        wiki_url = esc(profile.wiki_url, quote=True)
+        lines.append(f"<b>{_t('profile_wiki')}</b><a href=\"{wiki_url}\">{title}</a>")
     if profile.extra_info:
-        birth_date = html.escape(profile.extra_info.get("birth_date", ""))
-        height = html.escape(profile.extra_info.get("height", ""))
-        measurements = html.escape(profile.extra_info.get("measurements", ""))
-        cup = html.escape(profile.extra_info.get("cup", ""))
+        birth_date = esc(profile.extra_info.get("birth_date", ""))
+        height = esc(profile.extra_info.get("height", ""))
+        measurements = esc(profile.extra_info.get("measurements", ""))
+        cup = esc(profile.extra_info.get("cup", ""))
         socials = profile.extra_info.get("socials", [])
         if birth_date or height or measurements or cup or socials:
             lines.append("")
-            lines.append("<b>📋 个人简介</b>")
+            lines.append("<b>" + _t("profile_bio") + "</b>")
             if birth_date:
-                lines.append(f"• 🎂 出生日期：{birth_date}")
+                lines.append(_t("profile_birth", birth_date))
             if height:
-                lines.append(f"• 📏 身高：{height}")
+                lines.append(_t("profile_height", height))
             if measurements:
-                lines.append(f"• 👙 三围：{measurements}")
+                lines.append(_t("profile_measurements", measurements))
             if cup:
-                lines.append(f"• 🚺 罩杯：{cup}")
+                lines.append(_t("profile_cup", cup))
             if socials:
                 links = []
                 for s in socials[:6]:
-                    label = html.escape(s.get("label", "链接"))
-                    url = html.escape(s.get("url", ""), quote=True)
+                    label = esc(s.get("label", "链接"))
+                    url = esc(s.get("url", ""), quote=True)
                     if url:
                         links.append(f"<a href=\"{url}\">{label}</a>")
                 if links:
-                    lines.append("• 🌐 社媒：" + " | ".join(links))
+                    lines.append(_t("profile_social") + " | ".join(links))
     if profile.top_ids:
         lines.append("")
-        lines.append("<b>🏆 高分作品</b>")
-        lines.extend([f"• <code>{html.escape(i)}</code>" for i in profile.top_ids])
+        lines.append("<b>" + _t("profile_top_works") + "</b>")
+        lines.extend([f"• <code>{esc(i)}</code>" for i in profile.top_ids])
 
     lines.append("")
-    lines.append("<i>🔧 数据来源：JavBus / JavDb / Wikipedia</i>")
-    lines.append(f"<i>⏰ 查询时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>")
+    lines.append(f"<i>{_t('bot_data_source')}</i>")
+    lines.append(f"<i>{_t('bot_query_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}</i>")
 
-    result_keyboard: List[List[InlineKeyboardButton]] = []
+    result_keyboard = []
     if user_id is not None and profile.found and profile.star_name:
-        star_name_value = profile.star_name or ""
+        star_name_value = profile.star_name
 
         if is_favorite:
             result_keyboard.append([
-                InlineKeyboardButton("⭐ 已收藏", callback_data=_short_callback("unfavnow", star_name_value)),
-                InlineKeyboardButton("📰 查看最新作品", callback_data=_short_callback("favquery", star_name_value))
+                InlineKeyboardButton(_t("profile_favorited"), callback_data=_short_callback("unfavnow", star_name_value)),
+                InlineKeyboardButton(_t("profile_latest_works"), callback_data=_short_callback("favquery", star_name_value)),
             ])
         else:
             result_keyboard.append([
-                InlineKeyboardButton("☆ 收藏", callback_data=_short_callback("favnow", star_name_value)),
-                InlineKeyboardButton("📰 查看最新作品", callback_data=_short_callback("favquery", star_name_value))
+                InlineKeyboardButton(_t("profile_favorite"), callback_data=_short_callback("favnow", star_name_value)),
+                InlineKeyboardButton(_t("profile_latest_works"), callback_data=_short_callback("favquery", star_name_value)),
             ])
 
         result_keyboard.append([
-            InlineKeyboardButton("💾 搜索磁力", callback_data=_short_callback("magnet", star_name))
+            InlineKeyboardButton(_t("magnet_result"), callback_data=_short_callback("magnet", star_name))
         ])
 
         result_keyboard.append([
-            InlineKeyboardButton("🏠 返回主菜单", callback_data="menu:search")
+            InlineKeyboardButton(_t("menu_return"), callback_data="menu:search")
         ])
 
     return "\n".join(lines), InlineKeyboardMarkup(result_keyboard) if result_keyboard else None
 
 
 def format_magnet_messages(
-    query: str, items: List[Dict[str, Any]], max_len: int = 3900
+    query: str,
+    items: List[Dict[str, Any]],
+    max_len: int = 3900,
+    _t: Callable[..., str] = lambda k, *a: k,
 ) -> List[str]:
     q = html.escape(query)
     if not items:
         return [
-            "<b>💾 磁力搜索</b>\n"
-            f"🔍 关键词：<code>{q}</code>\n\n"
-            "❌ 未找到结果。\n"
-            "💡 试试：换关键词、用完整番号、或使用日文名。"
+            _t("magnet_result") + "\n"
+            f"🔍 <code>{q}</code>\n\n"
+            + _t("magnet_no_result")
         ]
 
     messages: List[str] = []
-    current_lines = ["<b>💾 磁力搜索</b>", f"🔍 关键词：<code>{q}</code>", ""]
+    current_lines = [_t("magnet_result"), f"🔍 <code>{q}</code>", ""]
 
     for idx, item in enumerate(items[:5], start=1):
         title = html.escape(item.get("title", ""))[:120]
@@ -143,25 +151,25 @@ def format_magnet_messages(
         magnet = html.escape(item.get("magnet", ""))
         block_lines = [
             f"<b>🎯 {idx}. {title}</b>",
-            f"📦 大小：<code>{size}</code>",
-            f"🧲 磁力：<code>{magnet}</code>",
+            f"{_t('magnet_size')}<code>{size}</code>",
+            f"{_t('magnet_link')}<code>{magnet}</code>",
             "",
         ]
 
-        candidate = "\n".join(current_lines + block_lines + ["<i>🔧 数据来源：sukebei.nyaa.si</i>"])
+        candidate = "\n".join(current_lines + block_lines + [f"<i>{_t('magnet_data_source')}</i>"])
         if len(candidate) > max_len and len(current_lines) > 3:
-            current_lines.append("<i>🔧 数据来源：sukebei.nyaa.si</i>")
+            current_lines.append(f"<i>{_t('magnet_data_source')}</i>")
             messages.append("\n".join(current_lines))
             current_lines = [
-                "<b>💾 磁力搜索（续）</b>",
-                f"🔍 关键词：<code>{q}</code>",
+                _t("magnet_continue"),
+                f"🔍 <code>{q}</code>",
                 "",
             ] + block_lines
         else:
             current_lines.extend(block_lines)
 
-    current_lines.append("<i>🔧 数据来源：sukebei.nyaa.si</i>")
-    current_lines.append(f"<i>⏰ 查询时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>")
+    current_lines.append(f"<i>{_t('magnet_data_source')}</i>")
+    current_lines.append(f"<i>{_t('bot_query_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}</i>")
     messages.append("\n".join(current_lines))
     return messages
 
@@ -171,30 +179,28 @@ def looks_like_av_id(text: str) -> bool:
     return bool(re.search(r"\b[A-Z]{2,8}[-_ ]?\d{2,6}\b", q))
 
 
-def format_rankings(stars: List[Dict[str, Any]], page: int) -> str:
+def format_rankings(
+    stars: List[Dict[str, Any]],
+    page: int,
+    _t: Callable[..., str] = lambda k, *a: k,
+) -> str:
     if not stars:
-        return (
-            "<b>🏆 热门女优排行榜</b>\n"
-            "📊 来源：JavDb 排行榜\n\n"
-            "❌ 暂时无法获取榜单，请稍后再试。"
-        )
+        return _t("rank_empty")
 
     lines = [
-        "<b>🏆 热门女优排行榜</b>",
-        f"📊 来源：JavDb 排行榜（第{page}页）",
+        _t("rank_title"),
+        _t("rank_source", page),
         "",
-        "<b>🌟 排名列表：</b>",
     ]
-    for idx, star in enumerate(stars, start=1):
-        name = html.escape(star.get("name", ""))
-        if idx <= 3:
-            medals = ["🥇", "🥈", "🥉"]
-            lines.append(f"{medals[idx-1]} {idx}. {name}")
-        else:
-            lines.append(f"⭐ {idx}. {name}")
+    start = (page - 1) * 20 + 1
+    for idx, star in enumerate(stars, start=start):
+        name = html.escape(star.get("name", "未知"))
+        actress_id = star.get("id", "")
+        id_str = f" ({html.escape(actress_id)})" if actress_id else ""
+        lines.append(f"  {idx}. <b>{name}</b>{id_str}")
+
     lines.append("")
-    lines.append(f"<i>⏰ 抓取时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>")
-    lines.append("<i>🔧 数据来源：JavDb 排行榜</i>")
+    lines.append(f"<i>{_t('bot_data_source')}</i>")
     return "\n".join(lines)
 
 
@@ -204,14 +210,10 @@ def build_rank_keyboard(limit: int, page: int) -> InlineKeyboardMarkup:
     rows: List[List[InlineKeyboardButton]] = []
     nav: List[InlineKeyboardButton] = []
     if page > 1:
-        nav.append(InlineKeyboardButton("⬅️ 上一页", callback_data=f"rank:{limit}:{page - 1}:0"))
+        nav.append(InlineKeyboardButton("◀️ 上一页", callback_data=f"rank:{limit}:{page-1}:0"))
     if page < 5:
-        nav.append(InlineKeyboardButton("下一页 ➡️", callback_data=f"rank:{limit}:{page + 1}:0"))
+        nav.append(InlineKeyboardButton("下一页 ▶️", callback_data=f"rank:{limit}:{page+1}:0"))
     if nav:
         rows.append(nav)
-    rows.append(
-        [
-            InlineKeyboardButton("🖼️ 查看本页头像", callback_data=f"rank:{limit}:{page}:1"),
-        ]
-    )
+    rows.append([InlineKeyboardButton("🔄 返回主菜单", callback_data="menu:rank")])
     return InlineKeyboardMarkup(rows)

@@ -10,9 +10,9 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from ..favorites import get_favorites_manager
+from ..fav_manager import get_favorites_manager
 from ..secure_callback import short_callback as _short_callback, resolve_callback as _resolve_callback
-from .common import require_auth, require_auth_callback
+from .common import _get_lang, require_auth, require_auth_callback
 
 if TYPE_CHECKING:
     from telegram import Update
@@ -93,17 +93,14 @@ def _render_favorites_page(favorites: list[dict[str, Any]], page: int, favorites
     return "\n".join(lines), reply_markup
 
 
-_EMPTY_FAVORITES_MSG = (
-    "你还没有收藏任何女优。\n\n"
-    "使用 /fav 女优名字 来收藏女优\n"
-    "例如：/fav 三上悠亚"
-)
+def _empty_fav_msg(_) -> str:
+    return _("fav_empty")
 
 
-def _get_user_favorites(user_id: int):
+async def _get_user_favorites(user_id: int):
     """Get favorites for a user. Returns the list or None (with empty favorites message logic)."""
-    favorites_manager = get_favorites_manager()
-    result = favorites_manager.get_favorites(user_id, limit=100)
+    favorites_manager = await get_favorites_manager()
+    result = await favorites_manager.get_favorites(user_id, limit=100)
     favorites = result.get('items', []) if isinstance(result, dict) else result
     if not favorites:
         return None
@@ -140,10 +137,14 @@ async def _update_favorite_keyboard(q, is_favorited: bool, actress_name: str) ->
 @require_auth
 async def favorite_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared) -> None:
     logger = logging.getLogger(__name__)
+    lang = await _get_lang(shared, update)
+
+    def _(key, *a):
+        return shared.service.i18n.t(key, lang, *a)
 
     query = " ".join(context.args).strip()
     if not query:
-        await msg.reply_text("用法：/fav 女优名字\n例如：/fav 三上悠亚\n支持一次性添加多个女优，用逗号或分号分隔\n例如：/fav 三上悠亚, 苍井空; 波多野结衣")
+        await msg.reply_text(_("fav_add_usage"))
         return
 
     actress_names = _parse_actress_names(query)
@@ -152,13 +153,13 @@ async def favorite_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, 
     logger.info(f"女优名字数量: {len(actress_names)}")
 
     if not actress_names:
-        await msg.reply_text("未找到有效的女优名字")
+        await msg.reply_text(_("fav_no_valid"))
         return
 
     user = update.effective_user
-    favorites_manager = get_favorites_manager()
+    favorites_manager = await get_favorites_manager()
 
-    favorites_manager.sync_user(
+    await favorites_manager.sync_user(
         user_id=user.id,
         username=user.username,
         first_name=user.first_name,
@@ -166,16 +167,16 @@ async def favorite_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, 
     )
 
     results = []
-    waiting = await msg.reply_text(f"正在查询 {len(actress_names)} 位女优...")
+    waiting = await msg.reply_text(_("fav_querying", len(actress_names)))
     try:
         for actress_name in actress_names:
             profile = await shared.service.query_profile_async(actress_name)
             if not profile.found:
-                results.append(f"❌ 未找到女优: {actress_name}")
+                results.append(_("fav_found", actress_name))
                 continue
 
             actress_data = {'extra_info': profile.extra_info} if profile.extra_info else None
-            success = favorites_manager.add_favorite(
+            success = await favorites_manager.add_favorite(
                 user_id=user.id,
                 actress_name=profile.star_name,
                 actress_id=profile.star_id,
@@ -183,24 +184,29 @@ async def favorite_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, 
             )
 
             if success:
-                results.append(f"✅ 已收藏: {profile.star_name}")
+                results.append(_("fav_added", profile.star_name))
+                await favorites_manager.increment_stat("total_favorites_added")
             else:
-                results.append(f"❌ 收藏失败: {profile.star_name}")
+                results.append(_("fav_add_failed", profile.star_name))
 
     except Exception as exc:
         logging.exception("收藏失败: %s", exc)
         results.append(f"❌ 收藏失败: {str(exc)}")
 
-    await waiting.edit_text("\n".join(results) + "\n\n使用 /myfav 查看所有收藏\n使用 /favlatest 查看收藏女优的最新作品")
+    await waiting.edit_text("\n".join(results) + _("fav_myfav_hint"))
 
 
 @require_auth
 async def unfavorite_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared) -> None:
     logger = logging.getLogger(__name__)
+    lang = await _get_lang(shared, update)
+
+    def _(key, *a):
+        return shared.service.i18n.t(key, lang, *a)
 
     query = " ".join(context.args).strip()
     if not query:
-        await msg.reply_text("用法：/unfav 女优名字\n例如：/unfav 三上悠亚\n支持一次性取消多个收藏，用逗号或分号分隔\n例如：/unfav 三上悠亚, 苍井空; 波多野结衣")
+        await msg.reply_text(_("fav_unfav_usage"))
         return
 
     actress_names = _parse_actress_names(query)
@@ -209,18 +215,18 @@ async def unfavorite_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg
     logger.info(f"女优名字数量: {len(actress_names)}")
 
     if not actress_names:
-        await msg.reply_text("未找到有效的女优名字")
+        await msg.reply_text(_("fav_no_valid"))
         return
 
     user = update.effective_user
-    favorites_manager = get_favorites_manager()
+    favorites_manager = await get_favorites_manager()
 
     results = []
-    waiting = await msg.reply_text(f"正在取消收藏 {len(actress_names)} 位女优...")
+    waiting = await msg.reply_text(_("fav_unfav_querying", len(actress_names)))
     try:
         for actress_name in actress_names:
-            if not favorites_manager.is_favorite(user.id, actress_name):
-                result = favorites_manager.get_favorites(user.id, limit=100)
+            if not await favorites_manager.is_favorite(user.id, actress_name):
+                result = await favorites_manager.get_favorites(user.id, limit=100)
                 fav_list = result.get('items', []) if isinstance(result, dict) else result
                 matched = None
                 for fav in fav_list:
@@ -231,31 +237,36 @@ async def unfavorite_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg
                 if matched:
                     actress_name = matched
                 else:
-                    results.append(f"❌ 未找到收藏: {actress_name}")
+                    results.append(_("fav_not_found", actress_name))
                     continue
 
-            success = favorites_manager.remove_favorite(user.id, actress_name)
+            success = await favorites_manager.remove_favorite(user.id, actress_name)
 
             if success:
-                results.append(f"✅ 已取消收藏: {actress_name}")
+                results.append(_("fav_removed", actress_name))
+                await favorites_manager.increment_stat("total_favorites_removed")
             else:
-                results.append(f"❌ 取消收藏失败: {actress_name}")
+                results.append(_("fav_remove_failed", actress_name))
 
     except Exception as exc:
         logging.exception("取消收藏失败: %s", exc)
         results.append(f"❌ 取消收藏失败: {str(exc)}")
 
-    await waiting.edit_text("\n".join(results) + "\n\n使用 /myfav 查看所有收藏")
+    await waiting.edit_text("\n".join(results) + "\n\n" + _("fav_list_title") + " /myfav")
 
 
 @require_auth
 async def my_favorites_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared, page: int = 1) -> None:
     user = update.effective_user
+    lang = await _get_lang(shared, update)
+
+    def _(key, *a):
+        return shared.service.i18n.t(key, lang, *a)
 
     favorites_per_page = 10
-    favorites = _get_user_favorites(user.id)
+    favorites = await _get_user_favorites(user.id)
     if not favorites:
-        await msg.reply_text(_EMPTY_FAVORITES_MSG)
+        await msg.reply_text(_("fav_empty"))
         return
 
     text, reply_markup = _render_favorites_page(favorites, 1, favorites_per_page)
@@ -271,10 +282,14 @@ async def my_favorites_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, m
 @require_auth
 async def favorites_latest_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared) -> None:
     user = update.effective_user
+    lang = await _get_lang(shared, update)
 
-    favorites = _get_user_favorites(user.id)
+    def _(key, *a):
+        return shared.service.i18n.t(key, lang, *a)
+
+    favorites = await _get_user_favorites(user.id)
     if not favorites:
-        await msg.reply_text(_EMPTY_FAVORITES_MSG)
+        await msg.reply_text(_("fav_empty"))
         return
 
     waiting = await msg.reply_text(f"正在查询 {len(favorites)} 位收藏女优的最新作品...")
@@ -347,6 +362,10 @@ async def favorites_latest_cmd(update: Update, context: ContextTypes.DEFAULT_TYP
 @require_auth_callback
 async def favorite_query_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared) -> None:
     from .search import run_search_reply
+    lang = await _get_lang(shared, update)
+
+    def _(key, *a):
+        return shared.service.i18n.t(key, lang, *a)
 
     data = q.data or ""
 
@@ -357,9 +376,9 @@ async def favorite_query_callback(update: Update, context: ContextTypes.DEFAULT_
         user = update.effective_user
 
         favorites_per_page = 10
-        favorites = _get_user_favorites(user.id)
+        favorites = await _get_user_favorites(user.id)
         if not favorites:
-            await q.edit_message_text(_EMPTY_FAVORITES_MSG)
+            await q.edit_message_text(_("fav_empty"))
             return
 
         text, reply_markup = _render_favorites_page(favorites, page, favorites_per_page)
@@ -380,9 +399,9 @@ async def favorite_query_callback(update: Update, context: ContextTypes.DEFAULT_
             return
 
         user = update.effective_user
-        favorites_manager = get_favorites_manager()
+        favorites_manager = await get_favorites_manager()
 
-        favorites_manager.record_favorite_query(user.id, actress_name)
+        await favorites_manager.record_favorite_query(user.id, actress_name)
 
         await q.answer(f"正在查询 {actress_name}...")
         user = update.effective_user
@@ -394,9 +413,9 @@ async def favorite_query_callback(update: Update, context: ContextTypes.DEFAULT_
             await q.answer("该链接已过期，请重新搜索", show_alert=True)
             return
         user = update.effective_user
-        favorites_manager = get_favorites_manager()
+        favorites_manager = await get_favorites_manager()
 
-        favorites_manager.sync_user(
+        await favorites_manager.sync_user(
             user_id=user.id,
             username=user.username,
             first_name=user.first_name,
@@ -410,7 +429,7 @@ async def favorite_query_callback(update: Update, context: ContextTypes.DEFAULT_
                 return
 
             actress_data = {'extra_info': profile.extra_info} if profile.extra_info else None
-            success = favorites_manager.add_favorite(
+            success = await favorites_manager.add_favorite(
                 user_id=user.id,
                 actress_name=profile.star_name,
                 actress_id=profile.star_id,
@@ -433,9 +452,9 @@ async def favorite_query_callback(update: Update, context: ContextTypes.DEFAULT_
             await q.answer("该链接已过期，请重新搜索", show_alert=True)
             return
         user = update.effective_user
-        favorites_manager = get_favorites_manager()
+        favorites_manager = await get_favorites_manager()
 
-        success = favorites_manager.remove_favorite(user.id, actress_name)
+        success = await favorites_manager.remove_favorite(user.id, actress_name)
 
         if success:
             await q.answer(f"✅ 已取消收藏: {actress_name}")
@@ -446,3 +465,26 @@ async def favorite_query_callback(update: Update, context: ContextTypes.DEFAULT_
     elif data == "favlatest:all":
         await q.answer("正在查询所有收藏的最新作品...")
         await favorites_latest_cmd(update, context)
+
+
+@require_auth
+async def export_favorites_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared) -> None:
+    user = update.effective_user
+    lang = await _get_lang(shared, update)
+
+    def _(key, *a):
+        return shared.service.i18n.t(key, lang, *a)
+    fav_mgr = await get_favorites_manager()
+    data = await fav_mgr.export_favorites(user.id)
+    if not data:
+        await msg.reply_text(_("fav_export_empty"))
+        return
+
+    import io
+    file = io.BytesIO(data.encode("utf-8"))
+    file.name = f"favorites_{user.id}.json"
+    await msg.reply_document(
+        document=file,
+        filename=file.name,
+        caption=_("fav_exported", data.count("actress_name")),
+    )

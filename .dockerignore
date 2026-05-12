@@ -1,6 +1,10 @@
-.venv/
-__pycache__/
+*.db
+__pycache__
 *.pyc
-.env
+*.pyo
 .git
 .gitignore
+.env
+*.md
+*.backup
+test_*
