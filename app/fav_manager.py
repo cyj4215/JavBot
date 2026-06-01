@@ -546,7 +546,12 @@ class FavoritesManager:
     async def get_users_with_push_enabled(self) -> List[int]:
         try:
             rows = await self._select_all(
-                "SELECT user_id FROM user_push_settings WHERE push_enabled = 1",
+                """
+                SELECT DISTINCT f.user_id
+                FROM favorites f
+                LEFT JOIN user_push_settings ups ON f.user_id = ups.user_id
+                WHERE ups.user_id IS NULL OR ups.push_enabled = 1
+                """,
             )
             return [r["user_id"] for r in rows]
         except Exception as e:
