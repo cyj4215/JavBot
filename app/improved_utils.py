@@ -1,5 +1,7 @@
 import logging
+import subprocess
 from typing import Optional
+
 import requests
 
 from .http_utils import build_retry_session
@@ -53,4 +55,34 @@ def download_image(url: str, proxy_addr: str = "", max_retries: int = 3, session
                 logger.error(f"下载失败（已达最大重试次数）：{url}")
                 return None
 
+    return None
+
+
+_CURL_HEADERS = [
+    "-H", "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "-H", "Accept-Language: zh-CN,zh;q=0.9,en;q=0.8",
+    "-H", "Referer: https://javdb.com/",
+]
+
+
+def download_image_via_curl(url: str, proxy_addr: str = "") -> Optional[bytes]:
+    """Download image bytes via curl subprocess (bypasses Cloudflare JA3 blocking)."""
+    if not url or not url.startswith("http"):
+        logger.warning("skipping non-http URL: %.100s", url)
+        return None
+    try:
+        cmd = ["curl", "-sL", "--max-time", "20"]
+        if proxy_addr:
+            cmd.extend(["-x", proxy_addr])
+        cmd.extend(_CURL_HEADERS)
+        cmd.append(url)
+
+        result = subprocess.run(cmd, capture_output=True, timeout=25)
+        if result.returncode == 0 and len(result.stdout) > 512:
+            return result.stdout
+        logger.warning("curl image download failed (rc=%d, size=%d): %.100s",
+                       result.returncode, len(result.stdout), url)
+    except Exception as e:
+        logger.warning("curl image download error: %s for %.100s", e, url)
     return None

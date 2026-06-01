@@ -1,3 +1,4 @@
+"""Rank service — JavDb actress rankings via curl-based scraper (Cloudflare bypass)."""
 from __future__ import annotations
 
 import asyncio
@@ -6,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from ..cache import TTLCache
+    from .javdb_scraper import JavDbScraper
 
 _FETCH_TIMEOUT_MS = 25000
 _OVERALL_TIMEOUT_S = 30
@@ -13,11 +15,15 @@ _OVERALL_TIMEOUT_S = 30
 
 class RankService:
 
-    def __init__(self, rank_cache: "TTLCache", refresh_interval: int = 600):
+    def __init__(self, rank_cache: "TTLCache", refresh_interval: int = 600, javdb_scraper: Optional["JavDbScraper"] = None):
         self.rank_cache = rank_cache
         self.refresh_interval = refresh_interval
         self._refresh_task: Optional[asyncio.Task] = None
         self._warming = False
+        self._scraper = javdb_scraper
+
+    def set_scraper(self, scraper: "JavDbScraper") -> None:
+        self._scraper = scraper
 
     async def start_background_refresh(self) -> None:
         if self._refresh_task is not None:
@@ -94,11 +100,13 @@ class RankService:
     async def _try_javdb_rankings(
         self, limit: int, page: int, timeout: int = _FETCH_TIMEOUT_MS
     ) -> List[Dict[str, Any]] | None:
-        try:
-            from ..browser_pool import get_actors_from_javdb
+        if self._scraper is None:
+            logging.error("JavDbScraper not set — call set_scraper() first")
+            return None
 
+        try:
             logging.info("获取 JavDb 排行榜: page=%d, limit=%d", page, limit)
-            actors = await get_actors_from_javdb(limit=limit, page=page, timeout=timeout)
+            actors = await self._scraper.get_actors_ranking(limit=limit, page=page)
             if actors:
                 cache_key = ("rank", limit, page)
                 self.rank_cache.set(cache_key, actors)

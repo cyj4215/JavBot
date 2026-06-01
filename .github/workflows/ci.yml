@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+        continue-on-error: true
+
+      - name: 安装开发依赖
+        run: pip install flake8 mypy types-requests
+
+      - name: 运行 flake8 检查
+        run: flake8 app/ --ignore=E501
+
+      - name: 运行 mypy 类型检查
+        run: mypy app/ --ignore-missing-imports
+        continue-on-error: true
+
+      - name: 运行测试 (test_favorites.py)
+        run: python test_favorites.py
+        continue-on-error: true
+
+      - name: 运行测试 (test_simple.py)
+        run: python test_simple.py
+        continue-on-error: true

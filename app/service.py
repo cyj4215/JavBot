@@ -60,7 +60,7 @@ class ActressService:
         self._javbus_limiter: RateLimiter = RateLimiter(calls_per_second=0.5)
         self._wiki_limiter: RateLimiter = RateLimiter(calls_per_second=1.0)
 
-        self._rank_svc = RankService(rank_cache=self.rank_cache, refresh_interval=rank_cache_ttl)
+        self._rank_svc = RankService(rank_cache=self.rank_cache, refresh_interval=rank_cache_ttl, javdb_scraper=self._javdb_scraper)
         self.i18n = I18nService(default_lang=i18n_default_language)
 
         self._wiki_svc = wiki_service or WikiService(
@@ -95,7 +95,7 @@ class ActressService:
     def get_av_meta(self, av_id: str) -> Dict[str, Any]:
         return self._javbus_svc.get_av_meta(av_id)
 
-    def get_rank_cache(self, key) -> Any:
+    def get_rank_cache(self, key):
         return self.rank_cache.get(key)
 
     async def get_hot_star_rankings(self, limit: int = 20, page: int = 1) -> List[Dict[str, Any]]:
@@ -132,23 +132,16 @@ class ActressService:
                 return self._javbus_svc.build_latest_works(ids[: self.latest_limit])
             return []
 
-        def load_top_ids() -> List[str]:
-            self._javbus_limiter.wait()
-            code, ids = self.javbus.get_id_by_star_name(star_name)
-            if code == 200 and ids:
-                return ids[: self.top_limit]
-            return []
-
         def load_wiki_extra() -> Tuple[Dict[str, Any], Dict[str, Any]]:
             wiki_page = self._wiki_svc.wiki_page_by_lang(star_name, from_lang="ja", to_lang="zh")
             extra_info = self._wiki_svc.get_star_extra_info(wiki_page.get("url", ""))
             return wiki_page, extra_info
 
-        latest_result, top_ids_result, wiki_result, javdb_result = await asyncio.gather(
+        latest_result, wiki_result, javdb_result, avatar_result = await asyncio.gather(
             asyncio.to_thread(load_latest),
-            asyncio.to_thread(load_top_ids),
             asyncio.to_thread(load_wiki_extra),
-            self._javdb_scraper.get_actress_works(star_name, limit=self.latest_limit),
+            self._javdb_scraper.get_actress_works(star_name, limit=self.top_limit),
+            self._javdb_scraper.search_actress(star_name),
             return_exceptions=True,
         )
 
@@ -158,19 +151,20 @@ class ActressService:
         else:
             latest_works = latest_result
 
-        # Merge JavDb works into latest_works (dedup by AV ID)
+        # Merge JavDb works into latest_works (dedup by AV ID), sort newest first
         if not isinstance(javdb_result, Exception) and javdb_result:
             seen_ids = {w.get("id") for w in latest_works if w.get("id")}
             for w in javdb_result:
                 if w.get("id") and w["id"] not in seen_ids:
                     seen_ids.add(w["id"])
                     latest_works.append(w)
+        latest_works.sort(key=lambda w: w.get("date") or "0", reverse=True)
 
-        top_ids: List[str] = []
-        if isinstance(top_ids_result, Exception):
-            logging.getLogger(__name__).debug("获取热门作品失败", exc_info=top_ids_result)
-        else:
-            top_ids = top_ids_result
+        avatar_url: Optional[str] = None
+        if isinstance(avatar_result, Exception):
+            logging.getLogger(__name__).debug("获取头像失败", exc_info=avatar_result)
+        elif avatar_result and isinstance(avatar_result, dict):
+            avatar_url = avatar_result.get("avatar", "")
 
         wiki_page: Dict[str, Any] = {}
         extra_info: Dict[str, Any] = {}
@@ -187,9 +181,9 @@ class ActressService:
             wiki_title=wiki_page.get("title"),
             wiki_url=wiki_page.get("url"),
             latest_works=latest_works,
-            top_ids=top_ids,
             matched_name=matched_name,
             extra_info=extra_info,
+            avatar_url=avatar_url,
         )
         self.profile_cache.set(cache_key, result.__dict__)
         return result

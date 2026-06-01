@@ -16,20 +16,25 @@ from telegram.ext import (
 from .config import BotConfig
 from .service import ActressService
 from .handlers import _set_shared
-from .handlers.common import start, help_cmd, menu_callback
-from .handlers.search import search_cmd, on_text
-from .handlers.magnet import magnet_cmd
+from .handlers.common import start, help_cmd, menu_callback, callback_search, callback_magnet
+from .handlers.search import cancel_search_callback, search_cmd, on_text
+from .handlers.magnet import magnet_cmd, callback_copymagnet
 from .handlers.rank import rank_cmd, rank_page_callback
-from .handlers.history import history_cmd
+from .handlers.history import history_cmd, history_page_callback
 from .handlers.settings import language_cmd, language_callback
 from .handlers.stats import stats_cmd
+from .handlers.works import works_callback
 from .handlers.favorites import (
     favorite_cmd,
     unfavorite_cmd,
     my_favorites_cmd,
     favorites_latest_cmd,
-    favorite_query_callback,
     export_favorites_cmd,
+    callback_favquery,
+    callback_favnow,
+    callback_unfavnow,
+    callback_myfav_page,
+    callback_myfav_sort,
 )
 from .handlers.push import check_and_push_new_works, push_toggle_cmd
 from .fav_manager import get_favorites_manager
@@ -143,11 +148,21 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("myfav", my_favorites_cmd))
     app.add_handler(CommandHandler("favlatest", favorites_latest_cmd))
     app.add_handler(CommandHandler("push", push_toggle_cmd))
-    app.add_handler(CallbackQueryHandler(favorite_query_callback, pattern=r"^(fav|myfav|unfav)"))
+    app.add_handler(CallbackQueryHandler(callback_favquery, pattern=r"^favquery:"))
+    app.add_handler(CallbackQueryHandler(callback_favnow, pattern=r"^favnow:"))
+    app.add_handler(CallbackQueryHandler(callback_unfavnow, pattern=r"^unfavnow:"))
+    app.add_handler(CallbackQueryHandler(callback_myfav_page, pattern=r"^myfav:page:"))
+    app.add_handler(CallbackQueryHandler(callback_myfav_sort, pattern=r"^myfav:sort:"))
     app.add_handler(CallbackQueryHandler(rank_page_callback, pattern=r"^rank:"))
     app.add_handler(CallbackQueryHandler(rank_page_callback, pattern=r"^rank_retry:"))
     app.add_handler(CallbackQueryHandler(language_callback, pattern=r"^lang:"))
-    app.add_handler(CallbackQueryHandler(menu_callback, pattern=r"^menu:|^search:|^magnet:"))
+    app.add_handler(CallbackQueryHandler(cancel_search_callback, pattern=r"^cancel:"))
+    app.add_handler(CallbackQueryHandler(history_page_callback, pattern=r"^hist:"))
+    app.add_handler(CallbackQueryHandler(works_callback, pattern=r"^works:"))
+    app.add_handler(CallbackQueryHandler(callback_search, pattern=r"^search:"))
+    app.add_handler(CallbackQueryHandler(callback_magnet, pattern=r"^magnet:"))
+    app.add_handler(CallbackQueryHandler(callback_copymagnet, pattern=r"^copymagnet:"))
+    app.add_handler(CallbackQueryHandler(menu_callback, pattern=r"^menu:"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
 
     if config.push_enabled_global:

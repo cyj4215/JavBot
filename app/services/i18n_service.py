@@ -17,9 +17,9 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
     # ── Bot info ──
     "bot_welcome": {
-        _LANG_ZH: "🎉 欢迎使用女优信息查询机器人！\n\n你可以通过以下方式与我交互：\n• 直接发送女优名字查询信息\n• 发送番号自动搜索磁力链接\n• 使用下方按钮快速访问功能",
-        _LANG_EN: "🎉 Welcome to the JAV Actress Info Bot!\n\nYou can interact with me by:\n• Sending an actress name directly\n• Sending an AV ID for magnet search\n• Using the buttons below",
-        _LANG_JA: "🎉 女優情報検索ボットへようこそ！\n\n以下の方法で操作できます：\n• 女優名を直接入力して検索\n• 品番を入力してマグネット検索\n• 以下のボタンで機能にアクセス",
+        _LANG_ZH: "🎉 欢迎使用！\n\n快速上手：\n🔍 发送女优名字 → 查看个人资料\n🧲 发送番号 (SSIS-123) → 搜索磁力\n⭐ 收藏女优 → 随时查看最新作品\n\n以下是主要功能入口：",
+        _LANG_EN: "🎉 Welcome!\n\nQuick start:\n🔍 Send an actress name → View profile\n🧲 Send an AV ID (SSIS-123) → Search magnets\n⭐ Save favorites → Track latest works\n\nMain menu:",
+        _LANG_JA: "🎉 ようこそ！\n\nクイックスタート：\n🔍 女優名を送信 → プロフィール表示\n🧲 品番を送信 (SSIS-123) → マグネット検索\n⭐ お気に入り登録 → 最新作品をチェック\n\nメインメニュー：",
     },
     "bot_started": {
         _LANG_ZH: "🚀 机器人已成功启动！",
@@ -68,6 +68,11 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "🔄 Back to Menu",
         _LANG_JA: "🔄 メインメニューに戻る",
     },
+    "profile_back_fav": {
+        _LANG_ZH: "返回收藏列表",
+        _LANG_EN: "Back to Favorites",
+        _LANG_JA: "お気に入りに戻る",
+    },
 
     # ── Auth ──
     "no_permission": {
@@ -96,6 +101,11 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_ZH: "查询失败，请稍后再试。",
         _LANG_EN: "Search failed, please try again later.",
         _LANG_JA: "検索に失敗しました。後でもう一度お試しください。",
+    },
+    "search_cancelled": {
+        _LANG_ZH: "已取消查询",
+        _LANG_EN: "Search cancelled",
+        _LANG_JA: "検索をキャンセルしました",
     },
     "search_usage": {
         _LANG_ZH: "用法：/s 名字\n例如：/s 三上悠亚",
@@ -200,9 +210,34 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_JA: "⭐ お気に入り済み",
     },
     "profile_latest_works": {
-        _LANG_ZH: "📰 查看最新作品",
+        _LANG_ZH: "📰 最新作品",
         _LANG_EN: "📰 Latest Works",
-        _LANG_JA: "📰 最新作品を見る",
+        _LANG_JA: "📰 最新作品",
+    },
+    "profile_view_works": {
+        _LANG_ZH: "📼 全部作品",
+        _LANG_EN: "📼 All Works",
+        _LANG_JA: "📼 全作品",
+    },
+    "works_actions": {
+        _LANG_ZH: "点击下方按钮搜索对应作品的磁力链接：",
+        _LANG_EN: "Click below to search magnets for each work:",
+        _LANG_JA: "各作品のマグネットリンクを検索：",
+    },
+    "works_title": {
+        _LANG_ZH: "🎬 {} 的作品",
+        _LANG_EN: "🎬 {}'s Works",
+        _LANG_JA: "🎬 {} の作品",
+    },
+    "works_empty": {
+        _LANG_ZH: "暂未获取到作品信息。",
+        _LANG_EN: "No works found.",
+        _LANG_JA: "作品情報が見つかりません。",
+    },
+    "works_page": {
+        _LANG_ZH: "第 {}/{} 页",
+        _LANG_EN: "Page {}/{}",
+        _LANG_JA: "{}/{} ページ",
     },
 
     # ── Magnet ──
@@ -275,6 +310,11 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_ZH: "🔧 数据来源：sukebei.nyaa.si",
         _LANG_EN: "🔧 Data source: sukebei.nyaa.si",
         _LANG_JA: "🔧 データソース：sukebei.nyaa.si",
+    },
+    "magnet_copy": {
+        _LANG_ZH: "复制",
+        _LANG_EN: "Copy",
+        _LANG_JA: "コピー",
     },
 
     # ── Rank ──

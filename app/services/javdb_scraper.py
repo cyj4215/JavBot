@@ -83,6 +83,8 @@ def _parse_actor_search(html: str) -> List[Dict[str, str]]:
         img_tag = box.find("img")
         if img_tag:
             img = img_tag.get("src", img_tag.get("data-src", ""))
+            if img and not img.startswith("http"):
+                img = f"https://javdb.com{img}"
 
         if name:
             actors.append({"name": name, "url": actor_url, "avatar": img})
@@ -214,3 +216,24 @@ class JavDbScraper:
         if not actor:
             return []
         return await self.get_actor_works(actor["url"], limit=limit)
+
+    async def get_actors_ranking(self, limit: int = 20, page: int = 1) -> List[Dict[str, Any]]:
+        """Scrape JavDb actor listing (sorted by popularity). Uses curl (Cloudflare bypass).
+
+        Returns list of dicts with keys: name, url, avatar.
+        Empty list on failure or Cloudflare challenge.
+        """
+        cache_key = ("javdb_actors", page)
+        cached = self._cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        url = f"https://javdb.com/actors?page={page}"
+        html = await self._rate_limited_curl(url)
+        if not html:
+            return []
+
+        actors = _parse_actor_search(html)
+        if actors:
+            self._cache.set(cache_key, actors)
+        return actors[:limit]

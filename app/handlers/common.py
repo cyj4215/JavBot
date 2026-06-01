@@ -15,6 +15,13 @@ if TYPE_CHECKING:
 from ..fav_manager import get_favorites_manager
 from ..secure_callback import resolve_callback as _resolve_callback
 
+_logger = logging.getLogger(__name__)
+
+
+def log_handler_error(exc: Exception, action: str) -> None:
+    """Log a handler exception with consistent format. Never silently swallows."""
+    _logger.exception("%s: %s", action, exc)
+
 
 def is_allowed(update: Update, allowed_user_ids: Set[int]) -> bool:
     if not allowed_user_ids:
@@ -40,6 +47,14 @@ def _language_context(func: Callable):
             return shared.service.i18n.t(key, lang, *a)
         return await func(update, context, msg, shared, _, lang, *args, **kwargs)
     return wrapper
+
+
+async def make_t(shared, update):
+    """Create i18n _() lambda from shared state and update. Replaces repeated boilerplate."""
+    lang = await _get_lang(shared, update)
+    def _(key, *a):
+        return shared.service.i18n.t(key, lang, *a)
+    return _
 
 
 async def _get_lang(shared, update) -> str:
@@ -208,8 +223,6 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     from . import _get_shared
-    from .search import run_search_reply
-    from .magnet import run_magnet_reply
     from .favorites import my_favorites_cmd
     from .rank import rank_cmd
 
@@ -230,39 +243,75 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return shared.service.i18n.t(key, lang, *a)
 
     data = q.data or ""
+    if not data.startswith("menu:"):
+        await q.answer()
+        return
 
-    if data.startswith("menu:"):
-        action = data[len("menu:"):]
+    action = data[len("menu:"):]
 
-        if action == "search":
-            await q.answer(_("search_actress").split("\n")[0])
-            await msg.reply_text(_("search_actress"))
-        elif action == "magnet":
-            await q.answer(_("magnet_result"))
-            await msg.reply_text(_("magnet_usage"))
-        elif action == "favorites":
-            await q.answer(_("fav_list_title"))
-            await my_favorites_cmd(update, context)
-        elif action == "rank":
-            await q.answer(_("rank_title"))
-            await rank_cmd(update, context)
-        elif action == "help":
-            await q.answer(_("menu_help"))
-            await help_cmd(update, context)
-        else:
-            await q.answer()
-    elif data.startswith("search:"):
-        query = _resolve_callback("search", data)
-        if query is None:
-            await q.answer(_("fav_expired"), show_alert=True)
-            return
-        await q.answer(f"🔍 {query}")
-        user_id: Optional[int] = update.effective_user.id if update.effective_user else None
-        await run_search_reply(msg, query, user_id)
-    elif data.startswith("magnet:"):
-        query = _resolve_callback("magnet", data)
-        if query is None:
-            await q.answer(_("fav_expired"), show_alert=True)
-            return
-        await q.answer(f"🧲 {query}")
-        await run_magnet_reply(msg, query)
+    if action == "search":
+        await q.answer(_("search_actress").split("\n")[0])
+        await msg.reply_text(_("search_actress"))
+    elif action == "magnet":
+        await q.answer(_("magnet_result"))
+        await msg.reply_text(_("magnet_usage"))
+    elif action == "favorites":
+        await q.answer(_("fav_list_title"))
+        await my_favorites_cmd(update, context)
+    elif action == "rank":
+        await q.answer(_("rank_title"))
+        await rank_cmd(update, context)
+    elif action == "help":
+        await q.answer(_("menu_help"))
+        await help_cmd(update, context)
+    else:
+        await q.answer()
+
+
+async def callback_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle search: callback — resolved signed search query."""
+    from . import _get_shared
+    from .search import run_search_reply
+
+    shared = _get_shared()
+    q = update.callback_query
+    if not q or not q.message:
+        return
+    if not is_allowed(update, shared.config.allowed_user_ids):
+        await q.answer("无权限使用", show_alert=True)
+        return
+
+    data = q.data or ""
+    query = _resolve_callback("search", data)
+    if query is None:
+        lang = await _get_lang(shared, update)
+        def _(key, *a): return shared.service.i18n.t(key, lang, *a)
+        await q.answer(_("fav_expired"), show_alert=True)
+        return
+    await q.answer(f"🔍 {query}")
+    user_id: Optional[int] = update.effective_user.id if update.effective_user else None
+    await run_search_reply(cast(Message, q.message), query, user_id, shared=shared)
+
+
+async def callback_magnet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle magnet: callback — resolved signed magnet query."""
+    from . import _get_shared
+    from .magnet import run_magnet_reply
+
+    shared = _get_shared()
+    q = update.callback_query
+    if not q or not q.message:
+        return
+    if not is_allowed(update, shared.config.allowed_user_ids):
+        await q.answer("无权限使用", show_alert=True)
+        return
+
+    data = q.data or ""
+    query = _resolve_callback("magnet", data)
+    if query is None:
+        lang = await _get_lang(shared, update)
+        def _(key, *a): return shared.service.i18n.t(key, lang, *a)
+        await q.answer(_("fav_expired"), show_alert=True)
+        return
+    await q.answer(f"🧲 {query}")
+    await run_magnet_reply(cast(Message, q.message), query, shared=shared)

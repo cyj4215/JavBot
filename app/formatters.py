@@ -19,8 +19,10 @@ def format_profile(
     *,
     is_favorite: bool = False,
     _t: Callable[..., str] = lambda k, *a: k,
+    back_data: Optional[str] = None,
 ) -> Tuple[str, Optional[InlineKeyboardMarkup]]:
-    def esc(s): return html.escape(s) if s else ""
+    def esc(s, quote=False):
+        return html.escape(s, quote=quote) if s else ""
 
     if not profile.found:
         query = esc(profile.query)
@@ -93,10 +95,6 @@ def format_profile(
                         links.append(f"<a href=\"{url}\">{label}</a>")
                 if links:
                     lines.append(_t("profile_social") + " | ".join(links))
-    if profile.top_ids:
-        lines.append("")
-        lines.append("<b>" + _t("profile_top_works") + "</b>")
-        lines.extend([f"• <code>{esc(i)}</code>" for i in profile.top_ids])
 
     lines.append("")
     lines.append(f"<i>{_t('bot_data_source')}</i>")
@@ -109,18 +107,18 @@ def format_profile(
         if is_favorite:
             result_keyboard.append([
                 InlineKeyboardButton(_t("profile_favorited"), callback_data=_short_callback("unfavnow", star_name_value)),
-                InlineKeyboardButton(_t("profile_latest_works"), callback_data=_short_callback("favquery", star_name_value)),
+                InlineKeyboardButton(_t("profile_latest_works"), callback_data=_short_callback("works", star_name_value)),
             ])
         else:
             result_keyboard.append([
                 InlineKeyboardButton(_t("profile_favorite"), callback_data=_short_callback("favnow", star_name_value)),
-                InlineKeyboardButton(_t("profile_latest_works"), callback_data=_short_callback("favquery", star_name_value)),
+                InlineKeyboardButton(_t("profile_latest_works"), callback_data=_short_callback("works", star_name_value)),
             ])
 
-        result_keyboard.append([
-            InlineKeyboardButton(_t("magnet_result"), callback_data=_short_callback("magnet", star_name))
-        ])
-
+        if back_data:
+            result_keyboard.append([
+                InlineKeyboardButton("← " + _t("profile_back_fav"), callback_data=back_data),
+            ])
         result_keyboard.append([
             InlineKeyboardButton(_t("menu_return"), callback_data="menu:search")
         ])
@@ -133,45 +131,148 @@ def format_magnet_messages(
     items: List[Dict[str, Any]],
     max_len: int = 3900,
     _t: Callable[..., str] = lambda k, *a: k,
-) -> List[str]:
+) -> List[Tuple[str, Optional[InlineKeyboardMarkup]]]:
     q = html.escape(query)
     if not items:
         return [
-            _t("magnet_result") + "\n"
-            f"🔍 <code>{q}</code>\n\n"
-            + _t("magnet_no_result")
+            (
+                f"{_t('magnet_result')}\n🔍 <code>{q}</code>\n\n{_t('magnet_no_result')}",
+                None,
+            )
         ]
 
-    messages: List[str] = []
+    messages: List[Tuple[str, Optional[InlineKeyboardMarkup]]] = []
     current_lines = [_t("magnet_result"), f"🔍 <code>{q}</code>", ""]
+    current_kb: List[List[InlineKeyboardButton]] = []
 
     for idx, item in enumerate(items[:5], start=1):
         title = html.escape(item.get("title", ""))[:120]
         size = html.escape(item.get("size", "Unknown"))
-        magnet = html.escape(item.get("magnet", ""))
+        magnet = item.get("magnet", "")
+        magnet_hash = magnet.replace("magnet:?xt=urn:btih:", "")[:20] if magnet else ""
         block_lines = [
             f"<b>🎯 {idx}. {title}</b>",
             f"{_t('magnet_size')}<code>{size}</code>",
-            f"{_t('magnet_link')}<code>{magnet}</code>",
+            f"{_t('magnet_link')}<code>{magnet_hash}</code>",
             "",
         ]
 
         candidate = "\n".join(current_lines + block_lines + [f"<i>{_t('magnet_data_source')}</i>"])
         if len(candidate) > max_len and len(current_lines) > 3:
             current_lines.append(f"<i>{_t('magnet_data_source')}</i>")
-            messages.append("\n".join(current_lines))
+            messages.append(("\n".join(current_lines), InlineKeyboardMarkup(current_kb) if current_kb else None))
             current_lines = [
                 _t("magnet_continue"),
                 f"🔍 <code>{q}</code>",
                 "",
             ] + block_lines
+            current_kb = []
         else:
             current_lines.extend(block_lines)
 
+        if magnet and magnet.startswith("magnet:"):
+            current_kb.append([InlineKeyboardButton(
+                f"📋 {_t('magnet_copy')} #{idx}",
+                callback_data=_short_callback("copymagnet", magnet),
+            )])
+
     current_lines.append(f"<i>{_t('magnet_data_source')}</i>")
     current_lines.append(f"<i>{_t('bot_query_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}</i>")
-    messages.append("\n".join(current_lines))
+    messages.append(("\n".join(current_lines), InlineKeyboardMarkup(current_kb) if current_kb else None))
     return messages
+
+
+# ── Favorites page rendering (extracted from handlers/favorites.py) ──
+
+_SORT_LABELS = {"date": "收藏时间", "name": "名称", "recent": "最近查询"}
+
+
+def time_ago(dt_str: str) -> str:
+    if not dt_str:
+        return ""
+    try:
+        dt = datetime.fromisoformat(dt_str)
+    except (ValueError, TypeError):
+        return dt_str[:10] if dt_str else ""
+    delta = datetime.now() - dt
+    if delta.days > 30:
+        return f"{delta.days // 30}月前"
+    if delta.days > 0:
+        return f"{delta.days}天前"
+    if delta.seconds >= 3600:
+        return f"{delta.seconds // 3600}小时前"
+    if delta.seconds >= 60:
+        return f"{delta.seconds // 60}分钟前"
+    return "刚刚"
+
+
+def sort_favorites(favorites, sort: str, last_query_map) -> List[Dict[str, Any]]:
+    if sort == "name":
+        return sorted(favorites, key=lambda f: f["actress_name"].lower())
+    if sort == "recent":
+        def _sort_key(f):
+            t = last_query_map.get(f["actress_name"], "")
+            return t if t else "\x00"
+        return sorted(favorites, key=_sort_key, reverse=True)
+    return sorted(favorites, key=lambda f: (f.get("created_at") or ""), reverse=True)
+
+
+def render_favorites_page(
+    favorites: List[Dict[str, Any]],
+    page: int,
+    favorites_per_page: int,
+    sort: str = "date",
+    last_query_map: Dict[str, str] = None,
+) -> Tuple[str, InlineKeyboardMarkup]:
+    if last_query_map is None:
+        last_query_map = {}
+
+    sorted_favs = sort_favorites(favorites, sort, last_query_map)
+    total_favorites = len(sorted_favs)
+    total_pages = max(1, (total_favorites + favorites_per_page - 1) // favorites_per_page)
+    page = max(1, min(page, total_pages))
+
+    start_idx = (page - 1) * favorites_per_page
+    end_idx = start_idx + favorites_per_page
+    page_favorites = sorted_favs[start_idx:end_idx]
+
+    sort_label = _SORT_LABELS.get(sort, sort)
+    lines = [
+        "<b>📚 我的收藏</b>",
+        "━━━━━━━━━━━━━━━━━━━━",
+        f"  排序: {sort_label}    共 {total_favorites} 位",
+        "",
+    ]
+
+    for idx, fav in enumerate(page_favorites, start_idx + 1):
+        name = html.escape(fav["actress_name"])
+        lines.append(f"  {idx}. <b>{name}</b>")
+
+    lines.append("")
+    if total_pages > 1:
+        lines.append(f"  第 {page}/{total_pages} 页")
+
+    keyboard = []
+    row = []
+    for fav in page_favorites:
+        name = fav["actress_name"]
+        btn_label = name[:10] + "…" if len(name) > 10 else name
+        row.append(InlineKeyboardButton(btn_label, callback_data=_short_callback("favquery", name)))
+        if len(row) == 3:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+
+    nav_row = []
+    if page > 1:
+        nav_row.append(InlineKeyboardButton("◀️", callback_data=f"myfav:page:{page-1}:{sort}"))
+    nav_row.append(InlineKeyboardButton(f"↕️{sort_label}", callback_data=f"myfav:sort:{sort}:{page}"))
+    if page < total_pages:
+        nav_row.append(InlineKeyboardButton("▶️", callback_data=f"myfav:page:{page+1}:{sort}"))
+    keyboard.append(nav_row)
+
+    return "\n".join(lines), InlineKeyboardMarkup(keyboard)
 
 
 def looks_like_av_id(text: str) -> bool:

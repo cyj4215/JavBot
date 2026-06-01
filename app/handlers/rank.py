@@ -18,10 +18,10 @@ if TYPE_CHECKING:
     from telegram import CallbackQuery, Message, Update
 
 
-async def send_rank_avatars_for_page(msg: Message, stars: list[dict[str, Any]], page: int, limit: int) -> None:
-    from . import _get_shared
-
-    shared = _get_shared()
+async def send_rank_avatars_for_page(msg: Message, stars: list[dict[str, Any]], page: int, limit: int, shared=None) -> None:
+    if shared is None:
+        from . import _get_shared
+        shared = _get_shared()
     if not shared.config.rank_feature_avatars:
         return
     sent = 0
@@ -76,15 +76,16 @@ async def _send_rank_result(
     msg: Message | None = None,
     *,
     _t=lambda k, *a: k,
+    shared=None,
 ) -> None:
     if not stars:
-        from . import _get_shared
-
-        shared = _get_shared()
+        if shared is None:
+            from . import _get_shared
+            shared = _get_shared()
         cached_stars = shared.service.get_rank_cache(("rank", limit, page))
         if cached_stars:
             text = (
-                f"⚠️ 最新数据获取失败，显示缓存数据\n\n{format_rankings(cached_stars, page, limit=limit, _t=_)}"
+                f"⚠️ 最新数据获取失败，显示缓存数据\n\n{format_rankings(cached_stars, page, limit=limit, _t=_t)}"
             )
             kwargs = dict(text=text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=build_rank_keyboard(limit, page))
             if is_edit:
@@ -94,21 +95,19 @@ async def _send_rank_result(
         else:
             await _handle_rank_error(target, limit, page, is_edit=is_edit)
     else:
-        kwargs = dict(text=format_rankings(stars, page, limit=limit, _t=_), parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=build_rank_keyboard(limit, page))
+        kwargs = dict(text=format_rankings(stars, page, limit=limit, _t=_t), parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=build_rank_keyboard(limit, page))
         if is_edit:
             await target.edit_message_text(**kwargs)
         else:
             await target.edit_text(**kwargs)
         if with_avatars and msg:
-            await send_rank_avatars_for_page(msg, stars, page, limit)
+            await send_rank_avatars_for_page(msg, stars, page, limit, shared=shared)
 
 
 @require_auth
 async def rank_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared) -> None:
-    from .common import _get_lang
-    lang = await _get_lang(shared, update)
-    def _(key, *a):
-        return shared.service.i18n.t(key, lang, *a)
+    from .common import make_t
+    _ = await make_t(shared, update)
     limit = shared.config.rank_limit_default
     page = shared.config.rank_page_default
     if len(context.args) >= 1 and context.args[0].isdigit():
@@ -124,7 +123,7 @@ async def rank_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shar
         if not stars and not has_cache:
             await _handle_rank_error(waiting, limit, page, loading=True)
         else:
-            await _send_rank_result(waiting, stars, limit, page, _t=_)
+            await _send_rank_result(waiting, stars, limit, page, _t=_, shared=shared)
     except Exception as exc:
         logger.exception("rank fetch failed: %s", exc)
         await _handle_rank_error(waiting, limit, page, loading=not has_cache)
@@ -132,7 +131,7 @@ async def rank_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shar
 
 async def rank_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     from . import _get_shared
-    from .common import _get_lang, is_allowed
+    from .common import is_allowed, make_t
 
     shared = _get_shared()
     q = update.callback_query
@@ -141,9 +140,7 @@ async def rank_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not is_allowed(update, shared.config.allowed_user_ids):
         await q.answer("无权限使用", show_alert=True)
         return
-    lang = await _get_lang(shared, update)
-    def _(key, *a):
-        return shared.service.i18n.t(key, lang, *a)
+    _ = await make_t(shared, update)
     data = q.data or ""
 
     retry_match = re.match(r"^rank_retry:(\d{1,2}):(\d)$", data)
@@ -156,7 +153,7 @@ async def rank_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await q.answer("正在重试...")
         try:
             stars = await shared.service.get_hot_star_rankings(limit, page)
-            await _send_rank_result(q, stars, limit, page, is_edit=True, _t=_)
+            await _send_rank_result(q, stars, limit, page, is_edit=True, _t=_, shared=shared)
         except Exception as exc:
             logger.exception("rank retry failed: %s", exc)
             await _handle_rank_error(q, limit, page, is_edit=True)
@@ -176,7 +173,7 @@ async def rank_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await q.answer("加载中...")
     try:
         stars = await shared.service.get_hot_star_rankings(limit, page)
-        await _send_rank_result(q, stars, limit, page, with_avatars=with_avatars, is_edit=True, msg=q.message, _t=_)
+        await _send_rank_result(q, stars, limit, page, with_avatars=with_avatars, is_edit=True, msg=q.message, _t=_, shared=shared)
     except Exception as exc:
         logger.exception("rank callback failed: %s", exc)
         await _handle_rank_error(q, limit, page, is_edit=True)

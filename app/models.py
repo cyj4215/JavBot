@@ -18,3 +18,4 @@ class ActressProfile:
     suggestions: Optional[List[str]] = None
     matched_name: Optional[str] = None
     extra_info: Optional[Dict[str, Any]] = None
+    avatar_url: Optional[str] = None
