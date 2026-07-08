@@ -79,15 +79,6 @@ class TTLCache:
             self._data.move_to_end(key)
             return value
 
-    def get_stale(self, key) -> Any:
-        """Get value even if expired. Returns None if key doesn't exist."""
-        with self._lock:
-            item = self._data.get(key)
-            if not item:
-                return None
-            self._data.move_to_end(key)
-            return item[1]
-
     def set(self, key, value, ttl: Optional[int] = None):
         expire_at = time.time() + (ttl if ttl is not None else self.default_ttl)
         with self._lock:

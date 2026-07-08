@@ -13,8 +13,6 @@ class ActressProfile:
     wiki_title: Optional[str] = None
     wiki_url: Optional[str] = None
     latest_works: Optional[List[Dict[str, Any]]] = None
-    top_ids: Optional[List[str]] = None
-    top_works: Optional[List[Dict[str, Any]]] = None
     suggestions: Optional[List[str]] = None
     matched_name: Optional[str] = None
     extra_info: Optional[Dict[str, Any]] = None

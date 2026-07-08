@@ -196,25 +196,6 @@ _FALLBACK_LABELS: Dict[str, str] = {
 }
 
 
-def time_ago(dt_str: str) -> str:
-    if not dt_str:
-        return ""
-    try:
-        dt = datetime.fromisoformat(dt_str)
-    except (ValueError, TypeError):
-        return dt_str[:10] if dt_str else ""
-    delta = datetime.now() - dt
-    if delta.days > 30:
-        return f"{delta.days // 30}月前"
-    if delta.days > 0:
-        return f"{delta.days}天前"
-    if delta.seconds >= 3600:
-        return f"{delta.seconds // 3600}小时前"
-    if delta.seconds >= 60:
-        return f"{delta.seconds // 60}分钟前"
-    return "刚刚"
-
-
 def sort_favorites(favorites, sort: str, last_query_map) -> List[Dict[str, Any]]:
     if sort == "name":
         return sorted(favorites, key=lambda f: f["actress_name"].lower())

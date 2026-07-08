@@ -194,12 +194,7 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "• 🌐 Social: ",
         _LANG_JA: "• 🌐 SNS：",
     },
-    "profile_top_works": {
-        _LANG_ZH: "🏆 高分作品",
-        _LANG_EN: "🏆 Top Works",
-        _LANG_JA: "🏆 高評価作品",
-    },
-    "profile_favorite": {
+        "profile_favorite": {
         _LANG_ZH: "☆ 收藏",
         _LANG_EN: "☆ Favorite",
         _LANG_JA: "☆ お気に入り",
@@ -214,22 +209,7 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "📰 Latest Works",
         _LANG_JA: "📰 最新作品",
     },
-    "profile_view_works": {
-        _LANG_ZH: "📼 全部作品",
-        _LANG_EN: "📼 All Works",
-        _LANG_JA: "📼 全作品",
-    },
-    "works_actions": {
-        _LANG_ZH: "点击下方按钮搜索对应作品的磁力链接：",
-        _LANG_EN: "Click below to search magnets for each work:",
-        _LANG_JA: "各作品のマグネットリンクを検索：",
-    },
-    "works_title": {
-        _LANG_ZH: "🎬 {} 的作品",
-        _LANG_EN: "🎬 {}'s Works",
-        _LANG_JA: "🎬 {} の作品",
-    },
-    "works_empty": {
+        "works_empty": {
         _LANG_ZH: "暂未获取到作品信息。",
         _LANG_EN: "No works found.",
         _LANG_JA: "作品情報が見つかりません。",
@@ -246,16 +226,6 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "💾 Magnet Search",
         _LANG_JA: "💾 マグネット検索",
     },
-    "magnet_loading": {
-        _LANG_ZH: "正在查询，请稍等...",
-        _LANG_EN: "Searching magnets, please wait...",
-        _LANG_JA: "マグネット検索中、お待ちください...",
-    },
-    "magnet_searching": {
-        _LANG_ZH: "正在搜索磁力，请稍等...",
-        _LANG_EN: "Searching for magnet links...",
-        _LANG_JA: "マグネットリンクを検索中...",
-    },
     "magnet_usage": {
         _LANG_ZH: "用法：/search 关键词\n例如：/search SSIS-123",
         _LANG_EN: "Usage: /search keyword\nExample: /search SSIS-123",
@@ -265,31 +235,6 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_ZH: "❌ 未找到结果。\n💡 试试：换关键词、用完整番号、或使用日文名。",
         _LANG_EN: "❌ No results found.\n💡 Try a different keyword, full AV ID, or Japanese name.",
         _LANG_JA: "❌ 結果が見つかりません。\n💡 別のキーワード、完全な品番、または日本語名をお試しください。",
-    },
-    "magnet_failed": {
-        _LANG_ZH: "搜索失败，请稍后再试。",
-        _LANG_EN: "Search failed, please try again later.",
-        _LANG_JA: "検索に失敗しました。後でもう一度お試しください。",
-    },
-    "magnet_detail": {
-        _LANG_ZH: "🎬 作品详情",
-        _LANG_EN: "🎬 Work Details",
-        _LANG_JA: "🎬 作品詳細",
-    },
-    "magnet_id": {
-        _LANG_ZH: "番号：",
-        _LANG_EN: "ID: ",
-        _LANG_JA: "品番：",
-    },
-    "magnet_title": {
-        _LANG_ZH: "标题：",
-        _LANG_EN: "Title: ",
-        _LANG_JA: "タイトル：",
-    },
-    "magnet_date": {
-        _LANG_ZH: "日期：",
-        _LANG_EN: "Date: ",
-        _LANG_JA: "日付：",
     },
     "magnet_size": {
         _LANG_ZH: "📦 大小：",
@@ -328,52 +273,11 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "📊 Source: JavDb Rankings (Page {})",
         _LANG_JA: "📊 ソース：JavDb ランキング（{}ページ）",
     },
-    "rank_loading": {
-        _LANG_ZH: "正在获取热门女优排行榜...",
-        _LANG_EN: "Fetching top actresses ranking...",
-        _LANG_JA: "人気女優ランキングを取得中...",
-    },
     "rank_empty": {
         _LANG_ZH: "❌ 暂时无法获取榜单，请稍后再试。",
         _LANG_EN: "❌ Unable to fetch rankings. Try again later.",
         _LANG_JA: "❌ ランキングを取得できませんでした。後でもう一度お試しください。",
     },
-    "rank_failed": {
-        _LANG_ZH: "获取榜单失败，请稍后再试。\n点击下方按钮重试：",
-        _LANG_EN: "Failed to fetch rankings. Try again later.\nClick the button below to retry:",
-        _LANG_JA: "ランキングの取得に失敗しました。後でもう一度お試しください。\n下のボタンをクリックして再試行：",
-    },
-    "rank_still_loading": {
-        _LANG_ZH: "⏳ 排行榜数据正在后台加载中，请稍后再试。\n点击下方按钮重试：",
-        _LANG_EN: "⏳ Rankings are loading in the background. Try again later.\nClick the button below to retry:",
-        _LANG_JA: "⏳ ランキングデータをバックグラウンドで読み込み中です。後でもう一度お試しください。\n下のボタンをクリックして再試行：",
-    },
-    "rank_cached": {
-        _LANG_ZH: "⚠️ 最新数据获取失败，显示缓存数据",
-        _LANG_EN: "⚠️ Failed to fetch latest data, showing cached data",
-        _LANG_JA: "⚠️ 最新データの取得に失敗しました。キャッシュデータを表示しています",
-    },
-    "rank_retry": {
-        _LANG_ZH: "🔄 重试",
-        _LANG_EN: "🔄 Retry",
-        _LANG_JA: "🔄 再試行",
-    },
-    "rank_retrying": {
-        _LANG_ZH: "正在重试...",
-        _LANG_EN: "Retrying...",
-        _LANG_JA: "再試行中...",
-    },
-    "rank_next": {
-        _LANG_ZH: "下一页 ▶️",
-        _LANG_EN: "Next ▶️",
-        _LANG_JA: "次へ ▶️",
-    },
-    "rank_prev": {
-        _LANG_ZH: "◀️ 上一页",
-        _LANG_EN: "◀️ Previous",
-        _LANG_JA: "◀️ 前へ",
-    },
-
     # ── Favorites ──
     "fav_empty": {
         _LANG_ZH: "你还没有收藏任何女优。\n\n使用 /fav 女优名字 来收藏女优\n例如：/fav 三上悠亚",
@@ -435,21 +339,6 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "📚 My Favorites",
         _LANG_JA: "📚 お気に入り",
     },
-    "fav_list_count": {
-        _LANG_ZH: "共收藏 {} 位女优",
-        _LANG_EN: "{} actresses favorited",
-        _LANG_JA: "{} 人の女優をお気に入り登録",
-    },
-    "fav_list_page": {
-        _LANG_ZH: "第 {}/{} 页",
-        _LANG_EN: "Page {}/{}",
-        _LANG_JA: "{}/{} ページ",
-    },
-    "fav_list_hint": {
-        _LANG_ZH: "点击名字可快速查询最新作品：",
-        _LANG_EN: "Click a name to see latest works:",
-        _LANG_JA: "名前をクリックして最新作品を表示：",
-    },
     "fav_exported": {
         _LANG_ZH: "📥 已导出 {} 条收藏记录",
         _LANG_EN: "📥 Exported {} favorite records",
@@ -459,26 +348,6 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_ZH: "暂无收藏可导出。使用 /fav 名字 开始收藏。",
         _LANG_EN: "No favorites to export. Use /fav to start adding.",
         _LANG_JA: "エクスポートできるお気に入りがありません。/fav で追加してください。",
-    },
-    "fav_latest_loading": {
-        _LANG_ZH: "正在查询 {} 位收藏女优的最新作品...",
-        _LANG_EN: "Fetching latest works for {} favorites...",
-        _LANG_JA: "{} 人のお気に入り女優の最新作品を取得中...",
-    },
-    "fav_latest_title": {
-        _LANG_ZH: "🎬 收藏女优最新作品",
-        _LANG_EN: "🎬 Latest Favorites Works",
-        _LANG_JA: "🎬 お気に入り女優の最新作品",
-    },
-    "fav_latest_empty": {
-        _LANG_ZH: "暂无最新作品信息。",
-        _LANG_EN: "No latest works available.",
-        _LANG_JA: "最新作品情報はありません。",
-    },
-    "fav_latest_more": {
-        _LANG_ZH: "...还有 {} 部作品",
-        _LANG_EN: "...and {} more works",
-        _LANG_JA: "...あと {} 作品",
     },
     "fav_myfav_hint": {
         _LANG_ZH: "\n\n使用 /myfav 查看所有收藏\n使用 /favlatest 查看收藏女优的最新作品",
@@ -507,17 +376,6 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "Next Page ▶️",
         _LANG_JA: "次のページ ▶️",
     },
-    "fav_view_all_latest": {
-        _LANG_ZH: "📰 查看所有收藏的最新作品",
-        _LANG_EN: "📰 View all favorites latest works",
-        _LANG_JA: "📰 お気に入り全員の最新作品を見る",
-    },
-    "fav_saved_at": {
-        _LANG_ZH: "(收藏于: {})",
-        _LANG_EN: "(saved: {})",
-        _LANG_JA: "(保存日: {})",
-    },
-
     # ── Sort labels ──
     "sort_date": {
         _LANG_ZH: "收藏时间",
@@ -568,64 +426,12 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "📜 Recent Searches",
         _LANG_JA: "📜 最近の検索",
     },
-    "history_count": {
-        _LANG_ZH: "共 {} 条记录",
-        _LANG_EN: "{} records",
-        _LANG_JA: "{} 件の記録",
-    },
     "history_empty": {
         _LANG_ZH: "暂无搜索历史。\n\n使用 /s 名字 查询女优信息，搜索记录会自动保存。",
         _LANG_EN: "No search history yet.\n\nUse /s to search for actresses. Your history will be saved automatically.",
         _LANG_JA: "検索履歴がありません。\n\n/s 名前 で女優を検索すると履歴が自動保存されます。",
     },
-    "history_re_search": {
-        _LANG_ZH: "点击按钮重新查询",
-        _LANG_EN: "Click a button to search again",
-        _LANG_JA: "ボタンをクリックして再検索",
-    },
-
     # ── Push ──
-    "push_status": {
-        _LANG_ZH: "📰 新作品推送状态：{}",
-        _LANG_EN: "📰 New works push status: {}",
-        _LANG_JA: "📰 新作プッシュ通知状態：{}",
-    },
-    "push_enabled_text": {
-        _LANG_ZH: "✅ 已开启",
-        _LANG_EN: "✅ Enabled",
-        _LANG_JA: "✅ 有効",
-    },
-    "push_disabled_text": {
-        _LANG_ZH: "❌ 已关闭",
-        _LANG_EN: "❌ Disabled",
-        _LANG_JA: "❌ 無効",
-    },
-    "push_usage": {
-        _LANG_ZH: "使用 /push on 开启推送\n使用 /push off 关闭推送",
-        _LANG_EN: "Use /push on to enable\nUse /push off to disable",
-        _LANG_JA: "/push on で有効にする\n/push off で無効にする",
-    },
-    "push_enabled_msg": {
-        _LANG_ZH: "✅ 已开启新作品推送\n\n当你关注的女优有新作品时，我会及时通知你！",
-        _LANG_EN: "✅ Push notifications enabled!\n\nI'll notify you when your favorited actresses have new works!",
-        _LANG_JA: "✅ 新作プッシュ通知を有効にしました！\n\nお気に入りの女優に新作があればお知らせします！",
-    },
-    "push_disabled_msg": {
-        _LANG_ZH: "❌ 已关闭新作品推送",
-        _LANG_EN: "❌ Push notifications disabled",
-        _LANG_JA: "❌ 新作プッシュ通知を無効にしました",
-    },
-    "push_toggle_usage": {
-        _LANG_ZH: "用法：/push [on|off]",
-        _LANG_EN: "Usage: /push [on|off]",
-        _LANG_JA: "使い方: /push [on|off]",
-    },
-    "push_notification_title": {
-        _LANG_ZH: "🎉 关注女优更新啦！",
-        _LANG_EN: "🎉 New work from your favorite!",
-        _LANG_JA: "🎉 お気に入り女優の新作です！",
-    },
-
     # ── Language ──
     "lang_current": {
         _LANG_ZH: "🌐 当前语言：{}",
@@ -652,29 +458,13 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "Unsupported language code. Supported: {}",
         _LANG_JA: "サポートされていない言語コードです。対応言語：{}",
     },
-    "lang_prompt": {
-        _LANG_ZH: "请选择语言 / Choose language / 言語を選択：",
-        _LANG_EN: "Please select a language / 请选择语言 / 言語を選択：",
-        _LANG_JA: "言語を選択 / Please select a language / 请选择语言：",
-    },
-
     # ── Errors ──
     "error_generic": {
         _LANG_ZH: "操作失败，请稍后再试。",
         _LANG_EN: "Operation failed, please try again later.",
         _LANG_JA: "操作に失敗しました。後でもう一度お試しください。",
     },
-    "error_expired": {
-        _LANG_ZH: "链接已过期，请重新操作",
-        _LANG_EN: "Link has expired. Please try again.",
-        _LANG_JA: "リンクの期限が切れています。もう一度操作してください。",
-    },
-    "error_not_found": {
-        _LANG_ZH: "未找到女优: {}",
-        _LANG_EN: "Actress not found: {}",
-        _LANG_JA: "女優が見つかりません: {}",
-    },
-}
+    }
 
 
 class I18nService:

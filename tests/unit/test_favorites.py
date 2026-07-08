@@ -94,18 +94,6 @@ async def test_remove_favorite_not_found(manager):
 
 
 @pytest.mark.asyncio
-async def test_get_favorite_count(manager):
-    manager._select_one = AsyncMock(return_value={"cnt": 5})
-    assert await manager.get_favorite_count(123) == 5
-
-
-@pytest.mark.asyncio
-async def test_get_favorite_count_zero(manager):
-    manager._select_one = AsyncMock(return_value=None)
-    assert await manager.get_favorite_count(123) == 0
-
-
-@pytest.mark.asyncio
 async def test_record_work_new(manager):
     conn = _mock_conn(rowcount=1)
     manager._pool.acquire = _mock_pool_acquire(conn)

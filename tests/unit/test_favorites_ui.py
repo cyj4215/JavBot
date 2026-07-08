@@ -1,53 +1,11 @@
-"""Unit tests for favorites UI helpers (_time_ago, _sort_favorites, _render_favorites_page).
+"""Unit tests for favorites UI helpers (_sort_favorites, _render_favorites_page).
 
 Pure functions — no DB or Telegram API required.
 """
-from datetime import datetime, timedelta
-
 import pytest
 from telegram import InlineKeyboardMarkup
 
-from app.formatters import time_ago, sort_favorites, render_favorites_page
-
-
-def _iso_now():
-    return datetime.now().isoformat(timespec="seconds")
-
-
-def _iso_minutes_ago(n):
-    return (datetime.now() - timedelta(minutes=n)).isoformat(timespec="seconds")
-
-
-def _iso_days_ago(n):
-    return (datetime.now() - timedelta(days=n)).isoformat(timespec="seconds")
-
-
-class TestTimeAgo:
-    def test_empty(self):
-        assert time_ago("") == ""
-
-    def test_just_now(self):
-        ts = _iso_now()
-        assert time_ago(ts) == "刚刚"
-
-    def test_minutes_ago(self):
-        ts = _iso_minutes_ago(5)
-        assert time_ago(ts) == "5分钟前"
-
-    def test_hours_ago(self):
-        ts = _iso_minutes_ago(180)
-        assert time_ago(ts) == "3小时前"
-
-    def test_days_ago(self):
-        ts = _iso_days_ago(3)
-        assert time_ago(ts) == "3天前"
-
-    def test_months_ago(self):
-        ts = _iso_days_ago(45)
-        assert time_ago(ts) == "1月前"
-
-    def test_invalid_format(self):
-        assert time_ago("not-a-date") == "not-a-date"
+from app.formatters import sort_favorites, render_favorites_page
 
 
 class TestSortFavorites:

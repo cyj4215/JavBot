@@ -23,24 +23,11 @@ class RankService:
         self._scraper = javdb_scraper
         self._last_good: Dict[tuple, List[Dict[str, Any]]] = {}
 
-    def set_scraper(self, scraper: "JavDbScraper") -> None:
-        self._scraper = scraper
-
     async def start_background_refresh(self) -> None:
         if self._refresh_task is not None:
             return
         self._refresh_task = asyncio.create_task(self._refresh_loop())
         logging.info("排行榜后台刷新已启动，间隔: %ds", self.refresh_interval)
-
-    async def stop_background_refresh(self) -> None:
-        if self._refresh_task is not None:
-            self._refresh_task.cancel()
-            try:
-                await self._refresh_task
-            except asyncio.CancelledError:
-                pass
-            self._refresh_task = None
-            logging.info("排行榜后台刷新已停止")
 
     async def _refresh_loop(self) -> None:
         await self._warm_cache()

@@ -303,17 +303,6 @@ class FavoritesManager:
             logger.error(f"检查收藏状态失败: {e}")
             return False
 
-    async def get_favorite_count(self, user_id: int) -> int:
-        try:
-            row = await self._select_one(
-                "SELECT COUNT(*) AS cnt FROM favorites WHERE user_id = %s",
-                (user_id,),
-            )
-            return row["cnt"] if row else 0
-        except Exception as e:
-            logger.error(f"获取收藏数量失败: {e}")
-            return 0
-
     # ------------------------------------------------------------------
     # Favorite queries tracking
     # ------------------------------------------------------------------
@@ -359,24 +348,6 @@ class FavoritesManager:
             return [{"actress_name": r["actress_name"], "query_time": str(r["query_time"])} for r in rows]
         except Exception as e:
             logger.error(f"获取查询记录失败: {e}")
-            return []
-
-    async def get_most_frequent_favorites(self, user_id: int, limit: int = 5) -> List[Tuple[str, int]]:
-        try:
-            rows = await self._select_all(
-                """
-                SELECT actress_name, COUNT(*) AS query_count
-                FROM favorite_queries
-                WHERE user_id = %s
-                GROUP BY actress_name
-                ORDER BY query_count DESC
-                LIMIT %s
-                """,
-                (user_id, limit),
-            )
-            return [(r["actress_name"], r["query_count"]) for r in rows]
-        except Exception as e:
-            logger.error(f"获取最常查询收藏失败: {e}")
             return []
 
     async def get_last_query_time_map(self, user_id: int) -> Dict[str, str]:
@@ -431,57 +402,9 @@ class FavoritesManager:
             logger.error(f"记录女优作品失败: {e}")
             return False
 
-    async def is_work_recorded(self, actress_name: str, av_id: str) -> bool:
-        try:
-            row = await self._select_one(
-                "SELECT 1 AS val FROM actress_works WHERE actress_name = %s AND av_id = %s",
-                (actress_name, av_id),
-            )
-            return row is not None
-        except Exception as e:
-            logger.error(f"检查作品记录失败: {e}")
-            return False
-
-    async def get_actress_works(self, actress_name: str, limit: int = 50) -> List[Dict]:
-        try:
-            rows = await self._select_all(
-                """
-                SELECT av_id, title, date, url, img, created_at
-                FROM actress_works
-                WHERE actress_name = %s
-                ORDER BY date DESC
-                LIMIT %s
-                """,
-                (actress_name, limit),
-            )
-            columns = ["av_id", "title", "date", "url", "img", "created_at"]
-            return [{c: r[c] for c in columns} for r in rows]
-        except Exception as e:
-            logger.error(f"获取女优作品失败: {e}")
-            return []
-
     # ------------------------------------------------------------------
     # Push settings
     # ------------------------------------------------------------------
-
-    async def batch_remove(self, user_id: int, names: List[str]) -> int:
-        """Remove multiple favorites at once. Returns count removed."""
-        if not names:
-            return 0
-        try:
-            placeholders = ", ".join(["%s"] * len(names))
-            async with self._pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        f"DELETE FROM favorites WHERE user_id = %s AND actress_name IN ({placeholders})",
-                        (user_id, *names),
-                    )
-                    removed = cur.rowcount
-                    await conn.commit()
-                    return removed
-        except Exception as e:
-            logger.error(f"批量移除收藏失败: {e}")
-            return 0
 
     async def export_favorites(self, user_id: int) -> Optional[str]:
         """Export favorites as JSON string. Returns None if no favorites."""
@@ -667,10 +590,3 @@ async def get_favorites_manager(config=None) -> FavoritesManager:
             raise RuntimeError("FavoritesManager not initialized. Pass config on first call.")
         _favorites_manager = await FavoritesManager.create(config)
     return _favorites_manager
-
-
-async def close_favorites_manager() -> None:
-    global _favorites_manager
-    if _favorites_manager is not None:
-        await _favorites_manager.close()
-        _favorites_manager = None

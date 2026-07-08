@@ -32,23 +32,6 @@ def is_allowed(update: Update, allowed_user_ids: Set[int]) -> bool:
     return user.id in allowed_user_ids
 
 
-def _language_context(func: Callable):
-    """Decorator: injects _ (i18n lambda) and lang into handler args.
-
-    Handler must have (update, context, msg, shared) signature.
-    """
-    @functools.wraps(func)
-    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, msg: Message, shared, *args, **kwargs):
-        from . import _get_shared
-        shared = _get_shared()
-        lang = await _get_lang(shared, update)
-
-        def _(key, *a):
-            return shared.service.i18n.t(key, lang, *a)
-        return await func(update, context, msg, shared, _, lang, *args, **kwargs)
-    return wrapper
-
-
 async def make_t(shared, update):
     """Create i18n _() lambda from shared state and update. Replaces repeated boilerplate."""
     lang = await _get_lang(shared, update)
