@@ -103,9 +103,8 @@ app/
 ├── services/
 │   ├── wiki_service.py      # Wikipedia/Wikidata 资料 (bio、社交链接)
 │   ├── javbus_service.py    # JavBus 作品 & 磁力 (jvav 库)
-│   ├── javdb_service.py     # JavDb 作品列表 (jvav 库)
 │   ├── javdb_scraper.py     # JavDb 爬虫 (subprocess curl 绕过 Cloudflare)
-│   ├── rank_service.py      # JavDb 排行榜 (Playwright) + 后台缓存刷新
+│   ├── rank_service.py      # JavDb 排行榜 (curl 子进程) + 后台缓存刷新
 │   ├── resolver.py          # ProfileResolver: 名称解析
 │   ├── name_match_service.py# 模糊匹配、简繁转换 (OpenCC, pypinyin)
 │   ├── i18n_service.py      # 多语言翻译 (zh_CN/en_US/ja_JP)
@@ -130,7 +129,7 @@ app/
 ├── magnet_search.py         # sukebei.nyaa.si 磁力搜索
 ├── secure_callback.py       # HMAC-SHA256 签名回调数据
 ├── scheduler.py             # 定时任务 (数据清理)
-├── browser_pool.py          # Playwright 浏览器池 (JavDb Cloudflare 绕过)
+├── improved_utils.py        # 图片下载 (requests + curl 子进程)
 ├── formatters.py            # HTML 消息格式化 (profile, magnet, rankings)
 └── config.py                # 配置
 ```
@@ -140,7 +139,7 @@ app/
 | 数据源 | 用途 | 访问方式 |
 |--------|------|----------|
 | **JavBus** | 女优搜索、作品元数据、磁力 | `jvav` 库 |
-| **JavDb** | 作品列表、热门排行 | `jvav` 库 + Playwright + curl |
+| **JavDb** | 作品列表、热门排行 | curl 子进程 (绕过 Cloudflare JA3) |
 | **Wikipedia/Wikidata** | 个人资料、社交链接 | `wikipediaapi` 库 + 直接 API |
 | **sukebei.nyaa.si** | 磁力链接 | requests + BeautifulSoup |
 
@@ -193,14 +192,12 @@ JavDb 使用了 Cloudflare Bot Management，它会检测 TLS 指纹（JA3）:
 
 - Python 3.11（`jvav` 原生扩展在 3.13+ 编译失败）
 - MySQL 8.0+
-- Playwright + Chromium（排行榜 Cloudflare 绕过）
 - macOS 或 Linux
 
 ### 本地运行
 
 ```bash
 pip install -r requirements.txt
-playwright install chromium
 python -m app.main
 ```
 
@@ -227,7 +224,6 @@ isort --check app/
 - Python 3.11-slim 镜像
 - 非 root `javbot` 用户运行
 - MySQL 8.0 通过 Docker Compose 自动管理
-- Playwright 依赖在 Dockerfile 中预装
 - `data/` 目录需要卷挂载的正确权限
 
 ## 许可

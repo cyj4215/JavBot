@@ -185,6 +185,15 @@ def format_magnet_messages(
 # ── Favorites page rendering (extracted from handlers/favorites.py) ──
 
 _SORT_LABELS = {"date": "收藏时间", "name": "名称", "recent": "最近查询"}
+_FALLBACK_LABELS: Dict[str, str] = {
+    "fav_list_title": "我的收藏",
+    "sort_label": "排序: {}",
+    "fav_total": "共 {} 位",
+    "fav_page_info": "第 {}/{} 页",
+    "sort_date": "收藏时间",
+    "sort_name": "名称",
+    "sort_recent": "最近查询",
+}
 
 
 def time_ago(dt_str: str) -> str:
@@ -223,6 +232,7 @@ def render_favorites_page(
     favorites_per_page: int,
     sort: str = "date",
     last_query_map: Dict[str, str] = None,
+    _t=lambda k, *a: _FALLBACK_LABELS.get(k, k).format(*a) if a else _FALLBACK_LABELS.get(k, k),
 ) -> Tuple[str, InlineKeyboardMarkup]:
     if last_query_map is None:
         last_query_map = {}
@@ -236,11 +246,11 @@ def render_favorites_page(
     end_idx = start_idx + favorites_per_page
     page_favorites = sorted_favs[start_idx:end_idx]
 
-    sort_label = _SORT_LABELS.get(sort, sort)
+    sort_label = _t(f"sort_{sort}", sort)
     lines = [
-        "<b>📚 我的收藏</b>",
+        "<b>📚 " + _t("fav_list_title") + "</b>",
         "━━━━━━━━━━━━━━━━━━━━",
-        f"  排序: {sort_label}    共 {total_favorites} 位",
+        "  " + _t("sort_label", sort_label) + "    " + _t("fav_total", total_favorites),
         "",
     ]
 
@@ -250,7 +260,7 @@ def render_favorites_page(
 
     lines.append("")
     if total_pages > 1:
-        lines.append(f"  第 {page}/{total_pages} 页")
+        lines.append("  " + _t("fav_page_info", page, total_pages))
 
     keyboard = []
     row = []

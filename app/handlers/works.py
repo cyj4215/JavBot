@@ -19,6 +19,16 @@ logger = logging.getLogger(__name__)
 
 _last_works_msg: Dict[int, int] = {}
 
+_MAX_WORKS_MSG_CACHE = 200
+
+
+def _store_works_msg(user_id: int, message_id: int) -> None:
+    """Store last works message ID with LRU-style eviction."""
+    if len(_last_works_msg) >= _MAX_WORKS_MSG_CACHE:
+        _last_works_msg.pop(next(iter(_last_works_msg)))
+    _last_works_msg[user_id] = message_id
+
+
 _MAX_CAPTION = 950
 
 
@@ -151,7 +161,7 @@ async def works_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, q, 
         except Exception:
             sent = None
         if sent:
-            _last_works_msg[user_id] = sent.message_id
+            _store_works_msg(user_id, sent.message_id)
             return
 
     if is_photo:

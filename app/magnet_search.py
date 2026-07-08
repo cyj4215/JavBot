@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 from typing import Dict, List, Optional
 
 import requests
@@ -17,14 +18,17 @@ UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chr
 
 _cache = TTLCache(max_size=DEFAULT_CACHE_SIZE, default_ttl=DEFAULT_CACHE_TTL)
 _session: Optional[requests.Session] = None
+_session_lock = threading.Lock()
 
 
 def _get_session() -> requests.Session:
     global _session
     if _session is None:
-        proxy_addr = os.getenv("HTTP_PROXY", "").strip()
-        _session = build_retry_session(proxy_addr=proxy_addr)
-        _session.headers.update({"user-agent": UA})
+        with _session_lock:
+            if _session is None:
+                proxy_addr = os.getenv("HTTP_PROXY", "").strip()
+                _session = build_retry_session(proxy_addr=proxy_addr)
+                _session.headers.update({"user-agent": UA})
     return _session
 
 

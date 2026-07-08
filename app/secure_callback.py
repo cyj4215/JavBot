@@ -24,7 +24,7 @@ from typing import Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CALLBACK_DB_PATH = os.environ.get("CALLBACK_DB_PATH", "/app/data/callbacks.json")
+DEFAULT_CALLBACK_DB_PATH = os.environ.get("CALLBACK_DB_PATH", os.path.join(os.getcwd(), "data", "callbacks.json"))
 
 
 class SecureCallbackStore:

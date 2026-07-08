@@ -21,6 +21,7 @@ class RankService:
         self._refresh_task: Optional[asyncio.Task] = None
         self._warming = False
         self._scraper = javdb_scraper
+        self._last_good: Dict[tuple, List[Dict[str, Any]]] = {}
 
     def set_scraper(self, scraper: "JavDbScraper") -> None:
         self._scraper = scraper
@@ -95,6 +96,11 @@ class RankService:
             fallback = self.rank_cache.get(("rank", limit, 1))
             if fallback:
                 return fallback
+        # Fallback to last known good data for any page
+        last = self._last_good.get(cache_key)
+        if last:
+            logging.info("返回缓存排行榜: page=%d (上次成功的数据)", page)
+            return last
         return []
 
     async def _try_javdb_rankings(
@@ -110,6 +116,7 @@ class RankService:
             if actors:
                 cache_key = ("rank", limit, page)
                 self.rank_cache.set(cache_key, actors)
+                self._last_good[cache_key] = actors
                 logging.info("JavDb 排行榜获取成功: %d 个演员", len(actors))
                 return actors
             logging.warning("JavDb 排行榜返回空结果")

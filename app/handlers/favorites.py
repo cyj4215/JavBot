@@ -212,7 +212,7 @@ async def my_favorites_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, m
         return
 
     last_query_map = await fav_mgr.get_last_query_time_map(user.id)
-    text, reply_markup = render_favorites_page(favorites, page, favorites_per_page, sort=sort, last_query_map=last_query_map)
+    text, reply_markup = render_favorites_page(favorites, page, favorites_per_page, sort=sort, last_query_map=last_query_map, _t=_)
 
     await msg.reply_text(
         text,
@@ -410,8 +410,9 @@ async def callback_myfav_page(update: Update, context: ContextTypes.DEFAULT_TYPE
         await _edit_or_send(q, _("fav_empty"))
         return
 
+    _ = await make_t(shared, update)
     last_query_map = await fav_mgr.get_last_query_time_map(update.effective_user.id)
-    text, reply_markup = render_favorites_page(favorites, page, 6, sort=sort, last_query_map=last_query_map)
+    text, reply_markup = render_favorites_page(favorites, page, 6, sort=sort, last_query_map=last_query_map, _t=_)
     await _edit_or_send(q, text, reply_markup)
 
 
@@ -425,16 +426,16 @@ async def callback_myfav_sort(update: Update, context: ContextTypes.DEFAULT_TYPE
     sort_order = ["date", "name", "recent"]
     next_sort = sort_order[(sort_order.index(current_sort) + 1) % len(sort_order)] if current_sort in sort_order else "date"
 
+    _ = await make_t(shared, update)
     fav_mgr = await get_favorites_manager()
     favorites = await _get_user_favorites(update.effective_user.id)
     if not favorites:
-        _ = await make_t(shared, update)
         await _edit_or_send(q, _("fav_empty"))
         return
 
-    await q.answer(f"排序切换: {_SORT_LABELS.get(next_sort, next_sort)}")
+    await q.answer(_("sort_changed", _SORT_LABELS.get(next_sort, next_sort)))
     last_query_map = await fav_mgr.get_last_query_time_map(update.effective_user.id)
-    text, reply_markup = render_favorites_page(favorites, page, 6, sort=next_sort, last_query_map=last_query_map)
+    text, reply_markup = render_favorites_page(favorites, page, 6, sort=next_sort, last_query_map=last_query_map, _t=_)
     await _edit_or_send(q, text, reply_markup)
 
 

@@ -518,6 +518,43 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_JA: "(保存日: {})",
     },
 
+    # ── Sort labels ──
+    "sort_date": {
+        _LANG_ZH: "收藏时间",
+        _LANG_EN: "Date",
+        _LANG_JA: "保存日",
+    },
+    "sort_name": {
+        _LANG_ZH: "名称",
+        _LANG_EN: "Name",
+        _LANG_JA: "名前",
+    },
+    "sort_recent": {
+        _LANG_ZH: "最近查询",
+        _LANG_EN: "Recent",
+        _LANG_JA: "最近検索",
+    },
+    "sort_changed": {
+        _LANG_ZH: "排序切换: {}",
+        _LANG_EN: "Sort changed: {}",
+        _LANG_JA: "並び替え: {}",
+    },
+    "sort_label": {
+        _LANG_ZH: "排序: {}",
+        _LANG_EN: "Sort: {}",
+        _LANG_JA: "並び替え: {}",
+    },
+    "fav_total": {
+        _LANG_ZH: "共 {} 位",
+        _LANG_EN: "{} total",
+        _LANG_JA: "合計 {}",
+    },
+    "fav_page_info": {
+        _LANG_ZH: "第 {}/{} 页",
+        _LANG_EN: "Page {}/{}",
+        _LANG_JA: "{}/{} ページ",
+    },
+
     # ── Work display ──
     "work_date_unknown": {
         _LANG_ZH: "未知",
