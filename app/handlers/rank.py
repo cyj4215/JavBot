@@ -38,24 +38,12 @@ async def send_rank_avatars_for_page(msg: Message, stars: list[dict[str, Any]], 
         sent += 1
 
 
-async def _handle_rank_error(target: Message | CallbackQuery, limit: int, page: int, is_edit: bool = False, loading: bool = False) -> None:
-    text = (
-        "<b>\U0001f3c6 热门女优排行榜</b>\n"
-        "来源：JavDb 排行榜\n\n"
-        "⏳ 排行榜数据正在后台加载中，请稍后再试。\n"
-        "点击下方按钮重试："
-        if loading
-        else (
-            "<b>\U0001f3c6 热门女优排行榜</b>\n"
-            "来源：JavDb 排行榜\n\n"
-            "获取榜单失败，请稍后再试。\n"
-            "点击下方按钮重试："
-        )
-    )
+async def _handle_rank_error(target: Message | CallbackQuery, limit: int, page: int, is_edit: bool = False, loading: bool = False, _t=lambda k, *a: k) -> None:
+    text = _t("rank_still_loading" if loading else "rank_error")
     safe_limit = max(1, min(limit, 50))
     safe_page = max(1, min(page, 5))
     reply_markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("\U0001f504 重试", callback_data=f"rank_retry:{safe_limit}:{safe_page}")]
+        [InlineKeyboardButton(_t("rank_retry"), callback_data=f"rank_retry:{safe_limit}:{safe_page}")]
     ])
     if is_edit:
         try:
@@ -84,9 +72,7 @@ async def _send_rank_result(
             shared = _get_shared()
         cached_stars = shared.service.get_rank_cache(("rank", limit, page))
         if cached_stars:
-            text = (
-                f"⚠️ 最新数据获取失败，显示缓存数据\n\n{format_rankings(cached_stars, page, limit=limit, _t=_t)}"
-            )
+            text = _t("rank_cached") + "\n\n" + format_rankings(cached_stars, page, limit=limit, _t=_t)
             kwargs = dict(text=text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=build_rank_keyboard(limit, page, with_avatars))
             if is_edit:
                 await target.edit_message_text(**kwargs)
@@ -117,16 +103,16 @@ async def rank_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shar
 
     cache_key = ("rank", limit, page)
     has_cache = shared.service.get_rank_cache(cache_key) is not None
-    waiting = await msg.reply_text("正在获取热门女优排行榜...")
+    waiting = await msg.reply_text(_("rank_loading"))
     try:
         stars = await shared.service.get_hot_star_rankings(limit, page)
         if not stars and not has_cache:
-            await _handle_rank_error(waiting, limit, page, loading=True)
+            await _handle_rank_error(waiting, limit, page, loading=True, _t=_)
         else:
             await _send_rank_result(waiting, stars, limit, page, with_avatars=shared.config.rank_feature_avatars, _t=_, shared=shared)
     except Exception as exc:
         logger.exception("rank fetch failed: %s", exc)
-        await _handle_rank_error(waiting, limit, page, loading=not has_cache)
+        await _handle_rank_error(waiting, limit, page, loading=not has_cache, _t=_)
 
 
 async def rank_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -150,13 +136,13 @@ async def rank_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         limit = max(1, min(limit, 50))
         page = max(1, min(page, 5))
 
-        await q.answer("正在重试...")
+        await q.answer(_("rank_retrying"))
         try:
             stars = await shared.service.get_hot_star_rankings(limit, page)
             await _send_rank_result(q, stars, limit, page, is_edit=True, _t=_, shared=shared)
         except Exception as exc:
             logger.exception("rank retry failed: %s", exc)
-            await _handle_rank_error(q, limit, page, is_edit=True)
+            await _handle_rank_error(q, limit, page, is_edit=True, _t=_)
         return
 
     m = re.match(r"^rank:(\d{1,2}):(\d):([01])$", data)
@@ -170,10 +156,10 @@ async def rank_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     limit = max(1, min(limit, 50))
     page = max(1, min(page, 5))
 
-    await q.answer("加载中...")
+    await q.answer(_("rank_loading"))
     try:
         stars = await shared.service.get_hot_star_rankings(limit, page)
         await _send_rank_result(q, stars, limit, page, with_avatars=with_avatars, is_edit=True, msg=q.message, _t=_, shared=shared)
     except Exception as exc:
         logger.exception("rank callback failed: %s", exc)
-        await _handle_rank_error(q, limit, page, is_edit=True)
+        await _handle_rank_error(q, limit, page, is_edit=True, _t=_)

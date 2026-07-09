@@ -278,6 +278,36 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "❌ Unable to fetch rankings. Try again later.",
         _LANG_JA: "❌ ランキングを取得できませんでした。後でもう一度お試しください。",
     },
+    "rank_loading": {
+        _LANG_ZH: "正在获取热门女优排行榜...",
+        _LANG_EN: "Fetching top actresses ranking...",
+        _LANG_JA: "人気女優ランキングを取得中...",
+    },
+    "rank_error": {
+        _LANG_ZH: "<b>🏆 热门女优排行榜</b>\n来源：JavDb 排行榜\n\n获取榜单失败，请稍后再试。\n点击下方按钮重试：",
+        _LANG_EN: "<b>🏆 Top Actresses Ranking</b>\nSource: JavDb Rankings\n\nFailed to fetch rankings. Try again later.\nClick the button below to retry:",
+        _LANG_JA: "<b>🏆 人気女優ランキング</b>\nソース：JavDb ランキング\n\nランキングの取得に失敗しました。後でもう一度お試しください。\n下のボタンをクリックして再試行：",
+    },
+    "rank_still_loading": {
+        _LANG_ZH: "<b>🏆 热门女优排行榜</b>\n来源：JavDb 排行榜\n\n⏳ 排行榜数据正在后台加载中，请稍后再试。\n点击下方按钮重试：",
+        _LANG_EN: "<b>🏆 Top Actresses Ranking</b>\nSource: JavDb Rankings\n\n⏳ Rankings are loading in the background. Try again later.\nClick the button below to retry:",
+        _LANG_JA: "<b>🏆 人気女優ランキング</b>\nソース：JavDb ランキング\n\n⏳ ランキングデータをバックグラウンドで読み込み中です。後でもう一度お試しください。\n下のボタンをクリックして再試行：",
+    },
+    "rank_cached": {
+        _LANG_ZH: "⚠️ 最新数据获取失败，显示缓存数据",
+        _LANG_EN: "⚠️ Failed to fetch latest data, showing cached data",
+        _LANG_JA: "⚠️ 最新データの取得に失敗しました。キャッシュデータを表示しています",
+    },
+    "rank_retry": {
+        _LANG_ZH: "🔄 重试",
+        _LANG_EN: "🔄 Retry",
+        _LANG_JA: "🔄 再試行",
+    },
+    "rank_retrying": {
+        _LANG_ZH: "正在重试...",
+        _LANG_EN: "Retrying...",
+        _LANG_JA: "再試行中...",
+    },
     # ── Favorites ──
     "fav_empty": {
         _LANG_ZH: "你还没有收藏任何女优。\n\n使用 /fav 女优名字 来收藏女优\n例如：/fav 三上悠亚",

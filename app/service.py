@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any, Dict, List, Optional, Tuple
 
 from jvav import JavBusUtil
@@ -51,11 +52,12 @@ class ActressService:
         self.wiki_user_agent = "tg-jvav-bot/1.0 (https://t.me/My_JavBot_bot)"
         self.http = build_retry_session(proxy_addr=proxy_addr)
 
-        self.profile_cache: TTLCache = TTLCache(max_size=2048, default_ttl=profile_cache_ttl)
-        self.av_meta_cache: TTLCache = TTLCache(max_size=4096, default_ttl=43200)
-        self.wiki_page_cache: TTLCache = TTLCache(max_size=2048, default_ttl=3600)
-        self.rank_cache: TTLCache = TTLCache(max_size=32, default_ttl=rank_cache_ttl)
-        self._javdb_cache: TTLCache = TTLCache(max_size=512, default_ttl=21600)
+        _cache_dir = os.path.join(os.getcwd(), "data", "cache")
+        self.profile_cache: TTLCache = TTLCache(max_size=2048, default_ttl=profile_cache_ttl, persist_path=os.path.join(_cache_dir, "profile.json"))
+        self.av_meta_cache: TTLCache = TTLCache(max_size=4096, default_ttl=43200, persist_path=os.path.join(_cache_dir, "av_meta.json"))
+        self.wiki_page_cache: TTLCache = TTLCache(max_size=2048, default_ttl=3600, persist_path=os.path.join(_cache_dir, "wiki_page.json"))
+        self.rank_cache: TTLCache = TTLCache(max_size=32, default_ttl=rank_cache_ttl, persist_path=os.path.join(_cache_dir, "rank.json"))
+        self._javdb_cache: TTLCache = TTLCache(max_size=512, default_ttl=21600, persist_path=os.path.join(_cache_dir, "javdb.json"))
         self._javdb_scraper = JavDbScraper(cache=self._javdb_cache)
         self._javbus_limiter: RateLimiter = RateLimiter(calls_per_second=0.5)
         self._wiki_limiter: RateLimiter = RateLimiter(calls_per_second=1.0)
