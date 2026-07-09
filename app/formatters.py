@@ -297,15 +297,16 @@ def format_rankings(
     return "\n".join(lines)
 
 
-def build_rank_keyboard(limit: int, page: int) -> InlineKeyboardMarkup:
+def build_rank_keyboard(limit: int, page: int, with_avatars: bool = False) -> InlineKeyboardMarkup:
     page = max(1, min(page, 5))
     limit = max(1, min(limit, 50))
     rows: List[List[InlineKeyboardButton]] = []
     nav: List[InlineKeyboardButton] = []
+    av = "1" if with_avatars else "0"
     if page > 1:
-        nav.append(InlineKeyboardButton("◀️ 上一页", callback_data=f"rank:{limit}:{page-1}:0"))
+        nav.append(InlineKeyboardButton("◀️ 上一页", callback_data=f"rank:{limit}:{page-1}:{av}"))
     if page < 5:
-        nav.append(InlineKeyboardButton("下一页 ▶️", callback_data=f"rank:{limit}:{page+1}:0"))
+        nav.append(InlineKeyboardButton("下一页 ▶️", callback_data=f"rank:{limit}:{page+1}:{av}"))
     if nav:
         rows.append(nav)
     rows.append([InlineKeyboardButton("🔄 返回主菜单", callback_data="menu:rank")])

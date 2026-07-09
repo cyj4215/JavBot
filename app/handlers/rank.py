@@ -87,7 +87,7 @@ async def _send_rank_result(
             text = (
                 f"⚠️ 最新数据获取失败，显示缓存数据\n\n{format_rankings(cached_stars, page, limit=limit, _t=_t)}"
             )
-            kwargs = dict(text=text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=build_rank_keyboard(limit, page))
+            kwargs = dict(text=text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=build_rank_keyboard(limit, page, with_avatars))
             if is_edit:
                 await target.edit_message_text(**kwargs)
             else:
@@ -95,7 +95,7 @@ async def _send_rank_result(
         else:
             await _handle_rank_error(target, limit, page, is_edit=is_edit)
     else:
-        kwargs = dict(text=format_rankings(stars, page, limit=limit, _t=_t), parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=build_rank_keyboard(limit, page))
+        kwargs = dict(text=format_rankings(stars, page, limit=limit, _t=_t), parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=build_rank_keyboard(limit, page, with_avatars))
         if is_edit:
             await target.edit_message_text(**kwargs)
         else:
@@ -123,7 +123,7 @@ async def rank_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shar
         if not stars and not has_cache:
             await _handle_rank_error(waiting, limit, page, loading=True)
         else:
-            await _send_rank_result(waiting, stars, limit, page, _t=_, shared=shared)
+            await _send_rank_result(waiting, stars, limit, page, with_avatars=shared.config.rank_feature_avatars, _t=_, shared=shared)
     except Exception as exc:
         logger.exception("rank fetch failed: %s", exc)
         await _handle_rank_error(waiting, limit, page, loading=not has_cache)
