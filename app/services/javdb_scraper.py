@@ -14,12 +14,13 @@ import logging
 import re
 import subprocess
 import time
-from typing import Any
 from urllib.parse import quote
 
 from bs4 import BeautifulSoup
 
 from ..cache import TTLCache
+from ..models.actors import ActorSearchResult
+from ..models.works import JavDbWork
 
 logger = logging.getLogger(__name__)
 
@@ -59,10 +60,10 @@ def _curl_get(url: str) -> str | None:
         return None
 
 
-def _parse_actor_search(html: str) -> list[dict[str, str]]:
+def _parse_actor_search(html: str) -> list[ActorSearchResult]:
     """Parse actor search results (actor-box)."""
     soup = BeautifulSoup(html, "html.parser")
-    actors: list[dict[str, str]] = []
+    actors: list[ActorSearchResult] = []
 
     title_tag = soup.find("title")
     if title_tag and (
@@ -94,16 +95,16 @@ def _parse_actor_search(html: str) -> list[dict[str, str]]:
                 img = f"https://javdb.com{img}"
 
         if name:
-            actors.append({"name": name, "url": actor_url, "avatar": img})
+            actors.append(ActorSearchResult(name=name, url=actor_url, avatar=img))
 
     return actors
 
 
-def _parse_movie_list(html: str, limit: int = 10) -> list[dict[str, Any]]:
+def _parse_movie_list(html: str, limit: int = 10) -> list[JavDbWork]:
     """Parse movie-list from actor page."""
 
     soup = BeautifulSoup(html, "html.parser")
-    works: list[dict[str, Any]] = []
+    works: list[JavDbWork] = []
 
     title_tag = soup.find("title")
     if title_tag and (
@@ -150,13 +151,13 @@ def _parse_movie_list(html: str, limit: int = 10) -> list[dict[str, Any]]:
 
             if av_id:
                 works.append(
-                    {
-                        "id": av_id,
-                        "title": title,
-                        "date": date or "未知",
-                        "img": img,
-                        "url": url,
-                    }
+                    JavDbWork(
+                        id=av_id,
+                        title=title,
+                        date=date or "未知",
+                        img=img,
+                        url=url,
+                    )
                 )
         except Exception:
             continue
@@ -182,12 +183,12 @@ class JavDbScraper:
             self._last_request = time.monotonic()
             return await asyncio.to_thread(_curl_get, url)
 
-    async def search_actress(self, name: str) -> dict[str, str] | None:
+    async def search_actress(self, name: str) -> ActorSearchResult | None:
         """Search for an actress on JavDb. Returns first match or None."""
         cache_key = ("javdb_search", name.lower().strip())
         cached = self._cache.get(cache_key)
         if cached is not None:
-            return cached
+            return ActorSearchResult.model_validate(cached)
 
         url = f"https://javdb.com/search?q={quote(name)}&f=actor"
         html = await self._rate_limited_curl(url)
@@ -199,15 +200,15 @@ class JavDbScraper:
             return None
 
         result = actors[0]
-        self._cache.set(cache_key, result)
+        self._cache.set(cache_key, result.model_dump(mode='json'))
         return result
 
-    async def get_actor_works(self, actor_url: str, limit: int = 10) -> list[dict[str, Any]]:
+    async def get_actor_works(self, actor_url: str, limit: int = 10) -> list[JavDbWork]:
         """Get works list from an actor's JavDb page."""
         cache_key = ("javdb_works", actor_url, limit)
         cached = self._cache.get(cache_key)
         if cached is not None:
-            return cached
+            return [JavDbWork.model_validate(w) for w in cached]
 
         html = await self._rate_limited_curl(actor_url)
         if not html:
@@ -215,10 +216,10 @@ class JavDbScraper:
 
         works = _parse_movie_list(html, limit=limit)
         if works:
-            self._cache.set(cache_key, works)
+            self._cache.set(cache_key, [w.model_dump(mode='json') for w in works])
         return works
 
-    async def get_actress_works(self, name: str, limit: int = 10) -> list[dict[str, Any]]:
+    async def get_actress_works(self, name: str, limit: int = 10) -> list[JavDbWork]:
         """Get works for an actress by name. High-level: search then fetch works.
 
         Returns empty list if actress not found or fetch fails.
@@ -226,18 +227,18 @@ class JavDbScraper:
         actor = await self.search_actress(name)
         if not actor:
             return []
-        return await self.get_actor_works(actor["url"], limit=limit)
+        return await self.get_actor_works(actor.url, limit=limit)
 
-    async def get_actors_ranking(self, limit: int = 20, page: int = 1) -> list[dict[str, Any]]:
+    async def get_actors_ranking(self, limit: int = 20, page: int = 1) -> list[ActorSearchResult]:
         """Scrape JavDb actor listing (sorted by popularity). Uses curl (Cloudflare bypass).
 
-        Returns list of dicts with keys: name, url, avatar.
+        Returns list of ActorSearchResult with keys: name, url, avatar.
         Empty list on failure or Cloudflare challenge.
         """
         cache_key = ("javdb_actors", page)
         cached = self._cache.get(cache_key)
         if cached is not None:
-            return cached
+            return [ActorSearchResult.model_validate(a) for a in cached]
 
         url = f"https://javdb.com/actors?page={page}"
         html = await self._rate_limited_curl(url)
@@ -246,5 +247,5 @@ class JavDbScraper:
 
         actors = _parse_actor_search(html)
         if actors:
-            self._cache.set(cache_key, actors)
+            self._cache.set(cache_key, [a.model_dump(mode='json') for a in actors])
         return actors[:limit]
