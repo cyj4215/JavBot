@@ -5,12 +5,13 @@ from __future__ import annotations
 import asyncio
 import html
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, cast
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+from ..models import MergedWork
 from ..secure_callback import resolve_callback as _resolve_callback
 from ..secure_callback import short_callback as _short_callback
 from .common import require_auth_callback
@@ -35,19 +36,19 @@ def _store_works_msg(user_id: int, message_id: int) -> None:
 _MAX_CAPTION = 950
 
 
-async def _get_profile_works(name: str, shared) -> list[dict[str, Any]]:
+async def _get_profile_works(name: str, shared) -> list[MergedWork]:
     """Fetch works for star from cache or re-query."""
     try:
         profile = await shared.service.query_profile_async(name)
         if profile.found and profile.latest_works:
-            return profile.latest_works
+            return cast(list[MergedWork], profile.latest_works)
     except Exception as e:
         logger.warning("获取作品失败: %s", e)
     return []
 
 
 def _build_works_page(
-    works: list[dict[str, Any]],
+    works: list[MergedWork],
     star_name: str,
     index: int,
     _t,
@@ -59,10 +60,10 @@ def _build_works_page(
     total = len(works)
     idx = max(0, min(index, total - 1))
     work = works[idx]
-    av_id = work.get("id", "")
-    img_url = (work.get("img") or "").strip()
-    date = (work.get("date") or "").strip()
-    title = (work.get("title") or "").strip()[:80]
+    av_id = work.id
+    img_url = work.img.strip()
+    date = (work.date or "").strip()
+    title = (work.title or "").strip()[:80]
 
     caption_parts = [
         f"<b>🎬 {html.escape(av_id)}</b>",

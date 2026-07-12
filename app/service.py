@@ -3,13 +3,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 from jvav import JavBusUtil
 
 from .cache import TTLCache
 from .http_utils import build_retry_session
-from .models import ActressProfile, WikiExtra
+from .models import ActorSearchResult, ActressProfile, JavBusWork, MagnetLink, MergedWork, WikiExtra
 from .rate_limiter import RateLimiter
 from .services import JavBusService, NameMatchService, ProfileResolver, WikiService
 from .services.i18n_service import I18nService
@@ -108,18 +108,32 @@ class ActressService:
             javbus=self.javbus,
             javbus_limiter=self._javbus_limiter,
         )
+        self._migrate_cache_schema()
 
-    def get_av_magnets(self, av_id: str, limit: int = 5) -> list[dict[str, Any]]:
+    def get_av_magnets(self, av_id: str, limit: int = 5) -> list[MagnetLink]:
         return self._javbus_svc.get_av_magnets(av_id, limit=limit)
 
-    def get_av_meta(self, av_id: str) -> dict[str, Any]:
+    def get_av_meta(self, av_id: str) -> JavBusWork:
         return self._javbus_svc.get_av_meta(av_id)
 
-    def get_rank_cache(self, key):
+    def get_rank_cache(self, key: Any) -> Any:
         return self.rank_cache.get(key)
 
-    async def get_hot_star_rankings(self, limit: int = 20, page: int = 1) -> list[dict[str, Any]]:
-        return await self._rank_svc.get_hot_star_rankings(limit=limit, page=page)
+    def _migrate_cache_schema(self) -> None:
+        """使旧 schema 缓存失效，避免 Pydantic ValidationError"""
+        version_key = "__cache_schema_version__"
+        version = self.profile_cache.get(version_key)
+        if version != 2:
+            self.profile_cache.clear()
+            self.av_meta_cache.clear()
+            self.wiki_page_cache.clear()
+            self.rank_cache.clear()
+            self._javdb_cache.clear()
+            self.profile_cache.set(version_key, 2, ttl=None)  # 永不过期
+
+    async def get_hot_star_rankings(self, limit: int = 20, page: int = 1) -> list[ActorSearchResult]:
+        result = await self._rank_svc.get_hot_star_rankings(limit=limit, page=page)
+        return cast(list[ActorSearchResult], result)
 
     async def start_rank_background_refresh(self) -> None:
         await self._rank_svc.start_background_refresh()
@@ -128,7 +142,7 @@ class ActressService:
         cache_key = ("profile", normalize_name(name), self.latest_limit, self.top_limit)
         cached = self.profile_cache.get(cache_key)
         if cached is not None:
-            return ActressProfile(**cached)
+            return ActressProfile.model_validate(cached)
 
         matched_name, star, suggestions = await asyncio.to_thread(self._resolver.resolve, name)
 
@@ -138,13 +152,13 @@ class ActressService:
                 query=name,
                 suggestions=suggestions,
             )
-            self.profile_cache.set(cache_key, result.__dict__)
+            self.profile_cache.set(cache_key, result.model_dump(mode='json'))
             return result
 
         star_name = star.get("star_name", name)
         star_id = star.get("star_id", "")
 
-        def load_latest() -> list[dict[str, Any]]:
+        def load_latest() -> list[JavBusWork]:
             code, ids = self.javbus.get_new_ids_by_star_name(star_name)
             if code == 200 and ids:
                 return self._javbus_svc.build_latest_works(ids[: self.latest_limit])
@@ -163,20 +177,28 @@ class ActressService:
             return_exceptions=True,
         )
 
-        latest_works = []
+        latest_works_models: list[MergedWork] = []
         if isinstance(latest_result, Exception):
             logging.getLogger(__name__).debug("获取最新作品失败", exc_info=latest_result)
         else:
-            latest_works = latest_result
+            for w in latest_result:
+                if isinstance(w, dict):
+                    latest_works_models.append(MergedWork.model_validate(w))
+                else:
+                    latest_works_models.append(w)
 
         # Merge JavDb works into latest_works (dedup by AV ID), sort newest first
         if not isinstance(javdb_result, Exception) and javdb_result:
-            seen_ids = {w.get("id") for w in latest_works if w.get("id")}
+            seen_ids = {w.id for w in latest_works_models if w.id}
             for w in javdb_result:
-                if w.get("id") and w["id"] not in seen_ids:
-                    seen_ids.add(w["id"])
-                    latest_works.append(w)
-        latest_works.sort(key=lambda w: w.get("date") or "0", reverse=True)
+                if isinstance(w, dict):
+                    merged = MergedWork.model_validate(w)
+                else:
+                    merged = w
+                if merged.id and merged.id not in seen_ids:
+                    seen_ids.add(merged.id)
+                    latest_works_models.append(merged)
+        latest_works_models.sort(key=lambda w: w.date or "0", reverse=True)
 
         avatar_url: str | None = None
         if isinstance(avatar_result, Exception):
@@ -198,10 +220,10 @@ class ActressService:
             star_id=star_id,
             wiki_title=wiki_page.get("title"),
             wiki_url=wiki_page.get("url"),
-            latest_works=latest_works,
+            latest_works=latest_works_models,
             matched_name=matched_name,
             extra_info=extra_info,
             avatar_url=avatar_url,
         )
-        self.profile_cache.set(cache_key, result.__dict__)
+        self.profile_cache.set(cache_key, result.model_dump(mode='json'))
         return result

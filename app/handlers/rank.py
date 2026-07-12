@@ -3,13 +3,14 @@ from __future__ import annotations
 import html
 import logging
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from ..formatters import build_rank_keyboard, format_rankings
+from ..models import ActorSearchResult
 from .common import require_auth, send_photo_with_fallback
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 
 
 async def send_rank_avatars_for_page(
-    msg: Message, stars: list[dict[str, Any]], page: int, limit: int, shared=None
+    msg: Message, stars: list[ActorSearchResult], page: int, limit: int, shared=None
 ) -> None:
     if shared is None:
         from . import _get_shared
@@ -31,10 +32,10 @@ async def send_rank_avatars_for_page(
     for idx, star in enumerate(stars, start=1):
         if sent >= max(1, shared.config.rank_avatar_limit):
             break
-        img = (star.get("thumb_url") or star.get("image_url") or "").strip()
+        img = star.avatar.strip()
         if not img:
             continue
-        name = html.escape(star.get("name", "未知"))
+        name = html.escape(star.name)
         rank_no = (page - 1) * max(1, min(limit, 50)) + idx
         caption = f"<b>#{rank_no} {name}</b>"
         await send_photo_with_fallback(msg, img, caption, shared.config.proxy_addr)
@@ -74,7 +75,7 @@ async def _handle_rank_error(
 
 async def _send_rank_result(
     target: Message | CallbackQuery,
-    stars: list[dict[str, Any]],
+    stars: list[ActorSearchResult],
     limit: int,
     page: int,
     with_avatars: bool = False,

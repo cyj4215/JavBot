@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 from ..fav_manager import get_favorites_manager
 from ..formatters import format_profile, looks_like_av_id
+from ..models import MergedWork
 from ..secure_callback import resolve_callback as _resolve_callback
 from ..secure_callback import short_callback as _short_callback
 from .common import make_t, require_auth, require_auth_callback
@@ -22,21 +23,21 @@ _pending_queries: dict[int, asyncio.Task] = {}
 
 
 async def send_works_media_group(
-    msg: Message, works: list[dict[str, Any]], _t, proxy_addr: str = ""
+    msg: Message, works: list[MergedWork], _t, proxy_addr: str = ""
 ) -> None:
     """Send each work as separate photo with magnet button. Download covers via curl."""
     from ..improved_utils import download_image_via_curl
 
     logger = logging.getLogger(__name__)
     for work in works:
-        av_id = work.get("id", "")
-        img_url = (work.get("img") or "").strip()
+        av_id = work.id
+        img_url = work.img.strip()
         if not img_url or not av_id:
             continue
 
         caption_parts = [f"<b>🎬 {html.escape(av_id)}</b>"]
-        date = (work.get("date") or "").strip()
-        title = (work.get("title") or "").strip()[:80]
+        date = (work.date or "").strip()
+        title = (work.title or "").strip()[:80]
         if date and date != _t("work_date_unknown"):
             caption_parts.append(f"📅 {html.escape(date)}")
         if title:
