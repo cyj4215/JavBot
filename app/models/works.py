@@ -1,6 +1,8 @@
 from __future__ import annotations
-from typing import Optional
+
 from pydantic import BaseModel
+
+from .magnets import MagnetLink
 
 
 class JavBusWork(BaseModel):
@@ -9,7 +11,7 @@ class JavBusWork(BaseModel):
     date: str = "未知"
     img: str = ""
     url: str = ""
-    magnets: list[dict] = []
+    magnets: list[MagnetLink] = []
 
 
 class JavDbWork(BaseModel):

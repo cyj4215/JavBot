@@ -6,7 +6,14 @@ from .wiki import SocialLink, WikiExtra
 from .works import JavBusWork, JavDbWork, MergedWork
 
 __all__ = [
-    "ActorSearchResult", "ActressProfile", "FavoriteEntry",
-    "JavBusWork", "JavDbWork", "MagnetLink", "MergedWork",
-    "SocialLink", "StarInfo", "WikiExtra",
+    "ActorSearchResult",
+    "ActressProfile",
+    "FavoriteEntry",
+    "JavBusWork",
+    "JavDbWork",
+    "MagnetLink",
+    "MergedWork",
+    "SocialLink",
+    "StarInfo",
+    "WikiExtra",
 ]
