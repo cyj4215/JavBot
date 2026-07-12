@@ -412,7 +412,7 @@ class FavoritesManager:
             return False
 
     # ------------------------------------------------------------------
-    # Push settings
+    # Export favorites
     # ------------------------------------------------------------------
 
     async def export_favorites(self, user_id: int) -> str | None:
@@ -426,6 +426,10 @@ class FavoritesManager:
         except Exception as e:
             logger.error(f"导出收藏失败: {e}")
             return None
+
+    # ------------------------------------------------------------------
+    # Push settings
+    # ------------------------------------------------------------------
 
     async def get_push_settings(self, user_id: int) -> dict:
         try:
@@ -489,10 +493,6 @@ class FavoritesManager:
         except Exception as e:
             logger.error(f"获取推送用户列表失败: {e}")
             return []
-
-    # ------------------------------------------------------------------
-    # Cleanup & maintenance
-    # ------------------------------------------------------------------
 
     # ------------------------------------------------------------------
     # Usage statistics

@@ -13,7 +13,7 @@ from telegram.ext import (
 )
 
 from .config import BotConfig
-from .fav_manager import get_favorites_manager
+from .fav import get_favorites_manager
 from .handlers import _set_shared
 from .handlers.common import callback_magnet, callback_search, help_cmd, menu_callback, start
 from .handlers.favorites import (

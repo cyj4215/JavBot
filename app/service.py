@@ -12,7 +12,7 @@ from .http_utils import build_retry_session
 from .models import ActorSearchResult, ActressProfile, JavBusWork, MagnetLink, MergedWork, WikiExtra
 from .rate_limiter import RateLimiter
 from .services import JavBusService, NameMatchService, ProfileResolver, WikiService
-from .services.i18n_service import I18nService
+from .services.i18n import I18nService
 from .services.javdb_scraper import JavDbScraper
 from .services.rank_service import RankService
 from .services.text_utils import normalize_name

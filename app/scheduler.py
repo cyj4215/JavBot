@@ -2,7 +2,7 @@ import logging
 
 from telegram.ext import ContextTypes
 
-from .fav_manager import get_favorites_manager
+from .fav import get_favorites_manager
 
 logger = logging.getLogger(__name__)
 

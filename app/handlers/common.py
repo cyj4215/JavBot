@@ -12,7 +12,7 @@ from telegram.ext import ContextTypes
 if TYPE_CHECKING:
     from telegram import CallbackQuery
 
-from ..fav_manager import get_favorites_manager
+from ..fav import get_favorites_manager
 from ..secure_callback import resolve_callback as _resolve_callback
 
 _logger = logging.getLogger(__name__)

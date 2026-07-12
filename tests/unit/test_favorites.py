@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.fav_manager import FavoritesManager
+from app.fav import FavoritesManager
 
 
 def _mock_pool_acquire(conn_mock):

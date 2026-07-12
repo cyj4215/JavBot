@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from ..fav_manager import get_favorites_manager
+from ..fav import get_favorites_manager
 from .common import _get_lang, require_auth
 
 if TYPE_CHECKING:

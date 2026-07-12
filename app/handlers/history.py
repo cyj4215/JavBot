@@ -8,7 +8,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from ..fav_manager import get_favorites_manager
+from ..fav import get_favorites_manager
 from ..secure_callback import short_callback as _short_callback
 from .common import require_auth
 

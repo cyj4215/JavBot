@@ -44,7 +44,7 @@ async def run_magnet_reply(msg: Message, query: str, shared=None) -> None:
         items = []
         logging.getLogger(__name__).warning("磁力搜索超时: %s", exc)
 
-    from ..fav_manager import get_favorites_manager
+    from ..fav import get_favorites_manager
 
     try:
         fav_mgr = await get_favorites_manager()

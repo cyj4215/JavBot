@@ -12,7 +12,7 @@ from telegram.ext import ContextTypes
 if TYPE_CHECKING:
     from telegram import Message, Update
 
-from ..fav_manager import get_favorites_manager
+from ..fav import get_favorites_manager
 from ..formatters import format_profile, looks_like_av_id
 from ..models import MergedWork
 from ..secure_callback import resolve_callback as _resolve_callback

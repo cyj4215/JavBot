@@ -1,7 +1,7 @@
 """Tests for I18nService: translation keys, all languages, format args, fallback."""
 import pytest
 
-from app.services.i18n_service import I18nService, _TRANSLATIONS, SUPPORTED_LANGUAGES
+from app.services.i18n import I18nService, _TRANSLATIONS, SUPPORTED_LANGUAGES
 
 
 class TestTranslationsComplete:
@@ -144,6 +144,6 @@ class TestTranslationContent:
 
 def test_importability():
     """Module can be imported without errors."""
-    from app.services.i18n_service import I18nService, SUPPORTED_LANGUAGES
+    from app.services.i18n import I18nService, SUPPORTED_LANGUAGES
     assert len(SUPPORTED_LANGUAGES) == 3
     assert I18nService is not None
