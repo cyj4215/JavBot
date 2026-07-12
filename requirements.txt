@@ -9,6 +9,7 @@ lxml==5.4.0
 wikipedia-api==0.8.1
 aiomysql==0.2.0
 cryptography==44.0.0
+curl-cffi>=0.7.0
 
 # Test dependencies
 pytest>=9.0.0

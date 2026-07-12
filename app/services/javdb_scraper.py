@@ -1,8 +1,8 @@
-"""JavDb scraper using curl subprocess.
+"""JavDb scraper using curl_cffi (primary) with subprocess curl fallback.
 
 JavDb uses Cloudflare Bot Management that blocks Python's TLS fingerprint
-(OpenSSL/urllib3 JA3 fingerprint). macOS curl uses SecureTransport which
-passes Cloudflare's checks. This module shells out to curl as a workaround.
+(OpenSSL/urllib3 JA3 fingerprint). curl_cffi emulates browser TLS fingerprint.
+On macOS, subprocess curl uses SecureTransport which also bypasses Cloudflare.
 
 Used as secondary data source: query results merge with JavBus (dedup by AV ID).
 """
@@ -37,6 +37,24 @@ _CURL_HEADERS = [
     "-H",
     "DNT: 1",
 ]
+
+try:
+    from curl_cffi import requests as curl_requests
+
+    _HAS_CURL_CFFI = True
+except ImportError:
+    _HAS_CURL_CFFI = False
+
+
+def _fetch(url: str) -> str | None:
+    """curl_cffi (preferred) or subprocess curl (fallback)."""
+    if _HAS_CURL_CFFI:
+        try:
+            resp = curl_requests.get(url, impersonate="chrome131", timeout=_CURL_TIMEOUT)
+            return resp.text
+        except Exception as e:
+            logger.warning("curl_cffi failed: %s, falling back to subprocess curl", e)
+    return _curl_get(url)
 
 
 def _curl_get(url: str) -> str | None:
@@ -173,15 +191,15 @@ class JavDbScraper:
         self._last_request = 0.0
         self._request_lock = asyncio.Lock()
 
-    async def _rate_limited_curl(self, url: str) -> str | None:
-        """Run curl with rate limiting via thread pool."""
+    async def _rate_limited_fetch(self, url: str) -> str | None:
+        """Fetch URL with rate limiting via thread pool."""
         async with self._request_lock:
             now = time.monotonic()
             since_last = now - self._last_request
             if since_last < 2.0:
                 await asyncio.sleep(2.0 - since_last)
             self._last_request = time.monotonic()
-            return await asyncio.to_thread(_curl_get, url)
+            return await asyncio.to_thread(_fetch, url)
 
     async def search_actress(self, name: str) -> ActorSearchResult | None:
         """Search for an actress on JavDb. Returns first match or None."""
@@ -191,7 +209,7 @@ class JavDbScraper:
             return ActorSearchResult.model_validate(cached)
 
         url = f"https://javdb.com/search?q={quote(name)}&f=actor"
-        html = await self._rate_limited_curl(url)
+        html = await self._rate_limited_fetch(url)
         if not html:
             return None
 
@@ -210,7 +228,7 @@ class JavDbScraper:
         if cached is not None:
             return [JavDbWork.model_validate(w) for w in cached]
 
-        html = await self._rate_limited_curl(actor_url)
+        html = await self._rate_limited_fetch(actor_url)
         if not html:
             return []
 
@@ -241,7 +259,7 @@ class JavDbScraper:
             return [ActorSearchResult.model_validate(a) for a in cached]
 
         url = f"https://javdb.com/actors?page={page}"
-        html = await self._rate_limited_curl(url)
+        html = await self._rate_limited_fetch(url)
         if not html:
             return []
 
