@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import atexit
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import TYPE_CHECKING, Any, Optional
+from concurrent.futures import ThreadPoolExecutor
+from typing import TYPE_CHECKING, Any
 
 from ..models.magnets import MagnetLink
 from ..models.works import JavBusWork
@@ -41,7 +41,7 @@ class JavBusService:
     # 公共方法
     # ------------------------------------------------------------------
 
-    def get_av_meta(self, av_id: str, is_uncensored: Optional[bool] = None) -> JavBusWork:
+    def get_av_meta(self, av_id: str, is_uncensored: bool | None = None) -> JavBusWork:
         if is_uncensored is None:
             is_uncensored = self.uncensored
         cached = self.av_meta_cache.get((av_id, is_uncensored))
@@ -61,16 +61,23 @@ class JavBusService:
                 magnet_links = []
                 if code == 200 and magnets:
                     magnet_links = [
-                        MagnetLink(title=m.get("title", ""), magnet=m.get("magnet", ""), size=m.get("size", ""))
+                        MagnetLink(
+                            title=m.get("title", ""),
+                            magnet=m.get("magnet", ""),
+                            size=m.get("size", ""),
+                        )
                         for m in magnets[:3]
                     ]
 
                 result = JavBusWork(
-                    id=av_id, title=title, date=date or "未知",
+                    id=av_id,
+                    title=title,
+                    date=date or "未知",
                     img=img if img.startswith("http") else "",
-                    url=url, magnets=magnet_links,
+                    url=url,
+                    magnets=magnet_links,
                 )
-                self.av_meta_cache.set((av_id, is_uncensored), result.model_dump(mode='json'))
+                self.av_meta_cache.set((av_id, is_uncensored), result.model_dump(mode="json"))
                 return result
         except Exception:
             logging.getLogger(__name__).debug("获取AV元数据失败: av_id=%s", av_id, exc_info=True)
@@ -93,7 +100,9 @@ class JavBusService:
             code, magnets = self.javbus.get_av_magnets(av_id, is_uncensored=self.uncensored)
             if code == 200 and magnets:
                 javbus_magnets = [
-                    MagnetLink(title=m.get("title", ""), magnet=m.get("magnet", ""), size=m.get("size", ""))
+                    MagnetLink(
+                        title=m.get("title", ""), magnet=m.get("magnet", ""), size=m.get("size", "")
+                    )
                     for m in magnets[:limit]
                 ]
         except Exception:

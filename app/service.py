@@ -131,7 +131,9 @@ class ActressService:
             self._javdb_cache.clear()
             self.profile_cache.set(version_key, 2, ttl=None)  # 永不过期
 
-    async def get_hot_star_rankings(self, limit: int = 20, page: int = 1) -> list[ActorSearchResult]:
+    async def get_hot_star_rankings(
+        self, limit: int = 20, page: int = 1
+    ) -> list[ActorSearchResult]:
         result = await self._rank_svc.get_hot_star_rankings(limit=limit, page=page)
         return cast(list[ActorSearchResult], result)
 
@@ -152,7 +154,7 @@ class ActressService:
                 query=name,
                 suggestions=suggestions,
             )
-            self.profile_cache.set(cache_key, result.model_dump(mode='json'))
+            self.profile_cache.set(cache_key, result.model_dump(mode="json"))
             return result
 
         star_name = star.get("star_name", name)
@@ -191,10 +193,7 @@ class ActressService:
         if not isinstance(javdb_result, Exception) and javdb_result:
             seen_ids = {w.id for w in latest_works_models if w.id}
             for w in javdb_result:
-                if isinstance(w, dict):
-                    merged = MergedWork.model_validate(w)
-                else:
-                    merged = w
+                merged = MergedWork.model_validate(w) if isinstance(w, dict) else w
                 if merged.id and merged.id not in seen_ids:
                     seen_ids.add(merged.id)
                     latest_works_models.append(merged)
@@ -225,5 +224,5 @@ class ActressService:
             extra_info=extra_info,
             avatar_url=avatar_url,
         )
-        self.profile_cache.set(cache_key, result.model_dump(mode='json'))
+        self.profile_cache.set(cache_key, result.model_dump(mode="json"))
         return result

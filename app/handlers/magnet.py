@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import html
 import logging
 from typing import TYPE_CHECKING
@@ -64,10 +65,8 @@ async def run_magnet_reply(msg: Message, query: str, shared=None) -> None:
         detail_lines.append(f"<b>标题：</b>{html.escape(av_meta['title'])}")
         if av_meta.get("date") != "未知":
             detail_lines.append(f"<b>日期：</b>{html.escape(av_meta['date'])}")
-        try:
+        with contextlib.suppress(Exception):
             await waiting.delete()
-        except Exception:
-            pass
         try:
             await send_photo_with_fallback(
                 msg, av_meta.get("img"), "\n".join(detail_lines), shared.config.proxy_addr
@@ -75,10 +74,8 @@ async def run_magnet_reply(msg: Message, query: str, shared=None) -> None:
         except Exception:
             logging.getLogger(__name__).warning("发送封面图片失败", exc_info=True)
     else:
-        try:
+        with contextlib.suppress(Exception):
             await waiting.edit_text("正在搜索磁力，请稍等...")
-        except Exception:
-            pass
 
     # Send magnet results — per-message try/except so single bad button doesn't lose all
     messages = format_magnet_messages(query, items, _t=_)
@@ -90,10 +87,8 @@ async def run_magnet_reply(msg: Message, query: str, shared=None) -> None:
         except Exception as exc:
             logging.getLogger(__name__).warning("发送磁力结果按钮失败: %s", exc)
             # Fallback: send without keyboard to avoid URL/port rejection
-            try:
+            with contextlib.suppress(Exception):
                 await msg.reply_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
-            except Exception:
-                pass
 
 
 @require_auth

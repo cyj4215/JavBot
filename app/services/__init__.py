@@ -7,10 +7,10 @@ from .text_utils import contains_cjk, normalize_name
 from .wiki_service import WikiService
 
 __all__ = [
-    "WikiService",
     "JavBusService",
     "NameMatchService",
     "ProfileResolver",
-    "normalize_name",
+    "WikiService",
     "contains_cjk",
+    "normalize_name",
 ]

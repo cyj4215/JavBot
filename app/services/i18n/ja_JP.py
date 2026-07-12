@@ -1,6 +1,4 @@
-from typing import Dict
-
-TRANSLATIONS: Dict[str, str] = {
+TRANSLATIONS: dict[str, str] = {
     "bot_welcome": "🎉 ようこそ！\n\nクイックスタート：\n🔍 女優名を送信 → プロフィール表示\n🧲 品番を送信 (SSIS-123) → マグネット検索\n⭐ お気に入り登録 → 最新作品をチェック\n\nメインメニュー：",
     "bot_started": "🚀 ボットが正常に起動しました！",
     "bot_data_source": "🔧 データソース: JavBus / JavDb / Wikipedia",

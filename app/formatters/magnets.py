@@ -47,11 +47,7 @@ def format_magnet_messages(
             messages.append(
                 ("\n".join(current_lines), InlineKeyboardMarkup(current_kb) if current_kb else None)
             )
-            current_lines = [
-                _t("magnet_continue"),
-                f"🔍 <code>{q}</code>",
-                "",
-            ] + block_lines
+            current_lines = [_t("magnet_continue"), f"🔍 <code>{q}</code>", "", *block_lines]
             current_kb = []
         else:
             current_lines.extend(block_lines)

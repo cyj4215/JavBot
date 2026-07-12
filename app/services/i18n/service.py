@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+
 from . import en_US, ja_JP, zh_CN
 
 _LANG_ZH = "zh_CN"
@@ -51,10 +53,8 @@ class I18nService:
         text = entry.get(lang) or entry.get(self._default_lang) or key
 
         if args:
-            try:
+            with contextlib.suppress(KeyError, IndexError):
                 text = text.format(*args)
-            except (KeyError, IndexError):
-                pass
 
         return text
 

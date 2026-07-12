@@ -32,7 +32,7 @@ def format_profile(
             lines.append("<b>💡 " + _t("search_suggestions") + "</b>")
             keyboard_rows = []
             row = []
-            for idx, name in enumerate(profile.suggestions[:8], 1):
+            for _idx, name in enumerate(profile.suggestions[:8], 1):
                 row.append(
                     InlineKeyboardButton(name, callback_data=_short_callback("search", name))
                 )

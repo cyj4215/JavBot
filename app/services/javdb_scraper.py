@@ -43,7 +43,7 @@ def _curl_get(url: str) -> str | None:
     """Run curl and return HTML body, or None on failure."""
     try:
         result = subprocess.run(
-            ["curl", "-sL", "--max-time", str(_CURL_TIMEOUT)] + _CURL_HEADERS + [url],
+            ["curl", "-sL", "--max-time", str(_CURL_TIMEOUT), *_CURL_HEADERS, url],
             capture_output=True,
             text=True,
             timeout=_CURL_TIMEOUT + 5,
@@ -200,7 +200,7 @@ class JavDbScraper:
             return None
 
         result = actors[0]
-        self._cache.set(cache_key, result.model_dump(mode='json'))
+        self._cache.set(cache_key, result.model_dump(mode="json"))
         return result
 
     async def get_actor_works(self, actor_url: str, limit: int = 10) -> list[JavDbWork]:
@@ -216,7 +216,7 @@ class JavDbScraper:
 
         works = _parse_movie_list(html, limit=limit)
         if works:
-            self._cache.set(cache_key, [w.model_dump(mode='json') for w in works])
+            self._cache.set(cache_key, [w.model_dump(mode="json") for w in works])
         return works
 
     async def get_actress_works(self, name: str, limit: int = 10) -> list[JavDbWork]:
@@ -247,5 +247,5 @@ class JavDbScraper:
 
         actors = _parse_actor_search(html)
         if actors:
-            self._cache.set(cache_key, [a.model_dump(mode='json') for a in actors])
+            self._cache.set(cache_key, [a.model_dump(mode="json") for a in actors])
         return actors[:limit]

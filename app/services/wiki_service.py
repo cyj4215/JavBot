@@ -337,9 +337,8 @@ class WikiService:
                 elif contains_any(label, ["三围", "スリーサイズ", "BWH", "Bust", "Waist", "Hip"]):
                     if not info["measurements"]:
                         info["measurements"] = value
-                elif contains_any(label, ["罩杯", "カップ", "Cup"]):
-                    if not info["cup"]:
-                        info["cup"] = value
+                elif contains_any(label, ["罩杯", "カップ", "Cup"]) and not info["cup"]:
+                    info["cup"] = value
 
             socials: list[SocialLink] = []
             seen_urls: set = set()
@@ -349,28 +348,30 @@ class WikiService:
                     href = f"https:{href}"
                 if not href.startswith("http"):
                     continue
-                if any(
-                    k in href.lower()
-                    for k in [
-                        "x.com/",
-                        "twitter.com/",
-                        "instagram.com/",
-                        "tiktok.com/",
-                        "youtube.com/",
-                    ]
+                if (
+                    any(
+                        k in href.lower()
+                        for k in [
+                            "x.com/",
+                            "twitter.com/",
+                            "instagram.com/",
+                            "tiktok.com/",
+                            "youtube.com/",
+                        ]
+                    )
+                    and href not in seen_urls
                 ):
-                    if href not in seen_urls:
-                        label = "链接"
-                        if "x.com" in href or "twitter.com" in href:
-                            label = "X/Twitter"
-                        elif "instagram.com" in href:
-                            label = "Instagram"
-                        elif "tiktok.com" in href:
-                            label = "TikTok"
-                        elif "youtube.com" in href:
-                            label = "YouTube"
-                        socials.append(SocialLink(label=label, url=href))
-                        seen_urls.add(href)
+                    label = "链接"
+                    if "x.com" in href or "twitter.com" in href:
+                        label = "X/Twitter"
+                    elif "instagram.com" in href:
+                        label = "Instagram"
+                    elif "tiktok.com" in href:
+                        label = "TikTok"
+                    elif "youtube.com" in href:
+                        label = "YouTube"
+                    socials.append(SocialLink(label=label, url=href))
+                    seen_urls.add(href)
             info["socials"] = socials
         except Exception:
             logging.getLogger(__name__).debug(

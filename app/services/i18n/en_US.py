@@ -1,6 +1,4 @@
-from typing import Dict
-
-TRANSLATIONS: Dict[str, str] = {
+TRANSLATIONS: dict[str, str] = {
     "bot_welcome": "🎉 Welcome!\n\nQuick start:\n🔍 Send an actress name → View profile\n🧲 Send an AV ID (SSIS-123) → Search magnets\n⭐ Save favorites → Track latest works\n\nMain menu:",
     "bot_started": "🚀 Bot successfully started!",
     "bot_data_source": "🔧 Data source: JavBus / JavDb / Wikipedia",

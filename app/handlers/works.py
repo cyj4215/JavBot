@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import html
 import logging
 from typing import TYPE_CHECKING, cast
@@ -161,10 +162,8 @@ async def works_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, q, 
     if img_url:
         old_id = _last_works_msg.pop(user_id, None) if not is_photo else None
         if old_id:
-            try:
+            with contextlib.suppress(Exception):
                 await q.message.chat.delete_message(old_id)
-            except Exception:
-                pass
         try:
             from ..improved_utils import download_image_via_curl
 

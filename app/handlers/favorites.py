@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import html
 import logging
 import re
@@ -25,9 +26,7 @@ def _fuzzy_match(input_name: str, fav_name: str) -> bool:
     fav_lower = fav_name.lower().strip()
     if input_lower == fav_lower:
         return True
-    if input_lower in fav_lower or fav_lower in input_lower:
-        return True
-    return False
+    return bool(input_lower in fav_lower or fav_lower in input_lower)
 
 
 def _parse_actress_names(query: str) -> list[str]:
@@ -313,10 +312,8 @@ async def favorites_latest_cmd(
         from .common import log_handler_error
 
         log_handler_error(exc, "favorites latest works query failed")
-        try:
+        with contextlib.suppress(Exception):
             await waiting.edit_text("查询失败，请稍后再试。")
-        except Exception:
-            pass
 
 
 @require_auth_callback
@@ -426,15 +423,13 @@ async def _edit_or_send(q, text, reply_markup=None):
                 disable_web_page_preview=True,
             )
     except Exception:
-        try:
+        with contextlib.suppress(Exception):
             await q.message.reply_text(
                 text,
                 parse_mode=ParseMode.HTML,
                 reply_markup=reply_markup,
                 disable_web_page_preview=True,
             )
-        except Exception:
-            pass
 
 
 @require_auth_callback

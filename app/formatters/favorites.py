@@ -21,7 +21,9 @@ _FALLBACK_LABELS: dict[str, str] = {
 }
 
 
-def sort_favorites(favorites: list[FavoriteEntry], sort: str, last_query_map: dict[str, str]) -> list[FavoriteEntry]:
+def sort_favorites(
+    favorites: list[FavoriteEntry], sort: str, last_query_map: dict[str, str]
+) -> list[FavoriteEntry]:
     if sort == "name":
         return sorted(favorites, key=lambda f: f.actress_name.lower())
     if sort == "recent":
@@ -40,7 +42,9 @@ def render_favorites_page(
     favorites_per_page: int,
     sort: str = "date",
     last_query_map: dict[str, str] | None = None,
-    _t: Callable[..., str] = lambda k, *a: _FALLBACK_LABELS.get(k, k).format(*a) if a else _FALLBACK_LABELS.get(k, k),
+    _t: Callable[..., str] = lambda k, *a: (
+        _FALLBACK_LABELS.get(k, k).format(*a) if a else _FALLBACK_LABELS.get(k, k)
+    ),
 ) -> tuple[str, InlineKeyboardMarkup]:
     if last_query_map is None:
         last_query_map = {}

@@ -12,6 +12,8 @@ from telegram.ext import ContextTypes
 if TYPE_CHECKING:
     from telegram import Message, Update
 
+import contextlib
+
 from ..fav import get_favorites_manager
 from ..formatters import format_profile, looks_like_av_id
 from ..models import MergedWork
@@ -167,10 +169,8 @@ async def run_search_reply(
                 proxy_addr=shared.config.proxy_addr,
             )
     except asyncio.CancelledError:
-        try:
+        with contextlib.suppress(Exception):
             await waiting.edit_text("⏹ " + _("search_cancelled"))
-        except Exception:
-            pass
         return
     except Exception as exc:
         logging.exception("query failed: %s", exc)

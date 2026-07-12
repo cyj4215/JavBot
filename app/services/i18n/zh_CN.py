@@ -1,6 +1,4 @@
-from typing import Dict
-
-TRANSLATIONS: Dict[str, str] = {
+TRANSLATIONS: dict[str, str] = {
     "bot_welcome": "🎉 欢迎使用！\n\n快速上手：\n🔍 发送女优名字 → 查看个人资料\n🧲 发送番号 (SSIS-123) → 搜索磁力\n⭐ 收藏女优 → 随时查看最新作品\n\n以下是主要功能入口：",
     "bot_started": "🚀 机器人已成功启动！",
     "bot_data_source": "🔧 数据来源：JavBus / JavDb / Wikipedia",

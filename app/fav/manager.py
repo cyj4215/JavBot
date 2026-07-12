@@ -122,35 +122,31 @@ class FavoritesManager:
             logger.info("MySQL 连接池已关闭")
 
     async def _init_tables(self) -> None:
-        async with self._pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                for ddl in _SQL_INIT:
-                    await cur.execute(ddl)
-                await conn.commit()
+        async with self._pool.acquire() as conn, conn.cursor() as cur:
+            for ddl in _SQL_INIT:
+                await cur.execute(ddl)
+            await conn.commit()
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
     async def _select_one(self, query: str, params: tuple = ()) -> dict[str, Any] | None:
-        async with self._pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(query, params)
-                return await cur.fetchone()
+        async with self._pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(query, params)
+            return await cur.fetchone()
 
     async def _select_all(self, query: str, params: tuple = ()) -> list[dict[str, Any]]:
-        async with self._pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(query, params)
-                return await cur.fetchall()
+        async with self._pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(query, params)
+            return await cur.fetchall()
 
     async def _execute(self, query: str, params: tuple = ()) -> int:
         """Execute a single write query with commit. Returns rowcount."""
-        async with self._pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(query, params)
-                await conn.commit()
-                return cur.rowcount
+        async with self._pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(query, params)
+            await conn.commit()
+            return cur.rowcount
 
     # ------------------------------------------------------------------
     # User management
@@ -200,31 +196,30 @@ class FavoritesManager:
             )
             actress_data_json = json.dumps(extra_only, ensure_ascii=False) if extra_only else None
 
-            async with self._pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    existing = await cur.execute(
-                        "SELECT id FROM favorites WHERE user_id = %s AND actress_name = %s",
-                        (user_id, actress_name),
-                    )
-                    if existing:
-                        await cur.execute(
-                            """
+            async with self._pool.acquire() as conn, conn.cursor() as cur:
+                existing = await cur.execute(
+                    "SELECT id FROM favorites WHERE user_id = %s AND actress_name = %s",
+                    (user_id, actress_name),
+                )
+                if existing:
+                    await cur.execute(
+                        """
                             UPDATE favorites
                             SET actress_id = COALESCE(%s, actress_id),
                                 actress_data = COALESCE(%s, actress_data)
                             WHERE user_id = %s AND actress_name = %s
                             """,
-                            (actress_id, actress_data_json, user_id, actress_name),
-                        )
-                    else:
-                        await cur.execute(
-                            """
+                        (actress_id, actress_data_json, user_id, actress_name),
+                    )
+                else:
+                    await cur.execute(
+                        """
                             INSERT INTO favorites (user_id, actress_name, actress_id, actress_data)
                             VALUES (%s, %s, %s, %s)
                             """,
-                            (user_id, actress_name, actress_id, actress_data_json),
-                        )
-                    await conn.commit()
+                        (user_id, actress_name, actress_id, actress_data_json),
+                    )
+                await conn.commit()
             return True
         except Exception as e:
             logger.error(f"添加收藏失败: {e}")
@@ -395,18 +390,17 @@ class FavoritesManager:
         img: str | None = None,
     ) -> bool:
         try:
-            async with self._pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """
+            async with self._pool.acquire() as conn, conn.cursor() as cur:
+                await cur.execute(
+                    """
                         INSERT IGNORE INTO actress_works
                         (actress_name, av_id, title, date, url, img)
                         VALUES (%s, %s, %s, %s, %s, %s)
                         """,
-                        (actress_name, av_id, title, date, url, img),
-                    )
-                    await conn.commit()
-                    return cur.rowcount > 0
+                    (actress_name, av_id, title, date, url, img),
+                )
+                await conn.commit()
+                return cur.rowcount > 0
         except Exception as e:
             logger.error(f"记录女优作品失败: {e}")
             return False
@@ -558,19 +552,18 @@ class FavoritesManager:
         try:
             cutoff_queries = (datetime.now() - timedelta(days=days)).isoformat()
             cutoff_works = (datetime.now() - timedelta(days=days * 2)).isoformat()
-            async with self._pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        "DELETE FROM favorite_queries WHERE query_time < %s",
-                        (cutoff_queries,),
-                    )
-                    deleted_queries = cur.rowcount
-                    await cur.execute(
-                        "DELETE FROM actress_works WHERE created_at < %s",
-                        (cutoff_works,),
-                    )
-                    deleted_works = cur.rowcount
-                    await conn.commit()
+            async with self._pool.acquire() as conn, conn.cursor() as cur:
+                await cur.execute(
+                    "DELETE FROM favorite_queries WHERE query_time < %s",
+                    (cutoff_queries,),
+                )
+                deleted_queries = cur.rowcount
+                await cur.execute(
+                    "DELETE FROM actress_works WHERE created_at < %s",
+                    (cutoff_works,),
+                )
+                deleted_works = cur.rowcount
+                await conn.commit()
             if deleted_queries > 0 or deleted_works > 0:
                 logger.info(
                     f"清理过期数据: 删除 {deleted_queries} 条查询记录, {deleted_works} 条作品记录"
@@ -581,16 +574,15 @@ class FavoritesManager:
     async def optimize_database(self) -> None:
         """MySQL analog: OPTIMIZE TABLE to reclaim space."""
         try:
-            async with self._pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    for tbl in (
-                        "favorite_queries",
-                        "actress_works",
-                        "favorites",
-                        "user_push_settings",
-                    ):
-                        await cur.execute(f"OPTIMIZE TABLE {tbl}")
-                    await conn.commit()
+            async with self._pool.acquire() as conn, conn.cursor() as cur:
+                for tbl in (
+                    "favorite_queries",
+                    "actress_works",
+                    "favorites",
+                    "user_push_settings",
+                ):
+                    await cur.execute(f"OPTIMIZE TABLE {tbl}")
+                await conn.commit()
             logger.info("数据库优化完成")
         except Exception as e:
             logger.error(f"数据库优化失败: {e}")

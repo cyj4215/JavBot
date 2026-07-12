@@ -96,7 +96,7 @@ class RankService:
         return []
 
     async def _try_javdb_rankings(
-        self, limit: int, page: int, timeout: int = _FETCH_TIMEOUT_MS
+        self, limit: int, page: int, _timeout: int = _FETCH_TIMEOUT_MS
     ) -> list[dict[str, Any]] | None:
         if self._scraper is None:
             logging.error("JavDbScraper not set — call set_scraper() first")
