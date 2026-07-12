@@ -9,6 +9,7 @@ from jvav import JavBusUtil
 
 from .cache import TTLCache
 from .http_utils import build_retry_session
+from .magnet_search import MagnetSearch
 from .models import ActorSearchResult, ActressProfile, JavBusWork, MagnetLink, MergedWork, WikiExtra
 from .rate_limiter import RateLimiter
 from .services import JavBusService, NameMatchService, ProfileResolver, WikiService
@@ -16,6 +17,7 @@ from .services.i18n import I18nService
 from .services.javdb_scraper import JavDbScraper
 from .services.rank_service import RankService
 from .services.text_utils import normalize_name
+from .session import BotSession
 
 try:
     from opencc import OpenCC
@@ -51,6 +53,8 @@ class ActressService:
         self.t2s = OpenCC("t2s") if OpenCC else None
         self.wiki_user_agent = "tg-jvav-bot/1.0 (https://t.me/My_JavBot_bot)"
         self.http = build_retry_session(proxy_addr=proxy_addr)
+        self._bot_session = BotSession(proxy_addr)
+        self._magnet_search = MagnetSearch(proxy_addr)
 
         _cache_dir = os.path.join(os.getcwd(), "data", "cache")
         self.profile_cache: TTLCache = TTLCache(

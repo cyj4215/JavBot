@@ -92,7 +92,7 @@ class JavBusService:
         return works
 
     def get_av_magnets(self, av_id: str, limit: int = 5) -> list[MagnetLink]:
-        from ..magnet_search import search_magnets
+        from ..magnet_search import MagnetSearch
 
         javbus_magnets: list[MagnetLink] = []
         try:
@@ -110,11 +110,9 @@ class JavBusService:
                 "获取JavBus磁力链接失败: av_id=%s", av_id, exc_info=True
             )
 
-        sukebei_magnets_raw = search_magnets(av_id, max(0, limit - len(javbus_magnets)), 20)
-        sukebei_magnets = [
-            MagnetLink(title=m.get("title", ""), magnet=m.get("magnet", ""), size=m.get("size", ""))
-            for m in sukebei_magnets_raw
-        ]
+        sukebei_magnets = MagnetSearch().search(
+            av_id, max(0, limit - len(javbus_magnets)), 20
+        )
 
         seen: set = set()
         result: list[MagnetLink] = []
