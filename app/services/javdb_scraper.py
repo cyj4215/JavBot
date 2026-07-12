@@ -14,7 +14,7 @@ import logging
 import re
 import subprocess
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 from urllib.parse import quote
 
 from bs4 import BeautifulSoup
@@ -25,15 +25,20 @@ logger = logging.getLogger(__name__)
 
 _CURL_TIMEOUT = 25
 _CURL_HEADERS = [
-    "-H", "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    "-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "-H", "Accept-Language: zh-CN,zh;q=0.9,en;q=0.8",
-    "-H", "Referer: https://www.google.com/",
-    "-H", "DNT: 1",
+    "-H",
+    "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "-H",
+    "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "-H",
+    "Accept-Language: zh-CN,zh;q=0.9,en;q=0.8",
+    "-H",
+    "Referer: https://www.google.com/",
+    "-H",
+    "DNT: 1",
 ]
 
 
-def _curl_get(url: str) -> Optional[str]:
+def _curl_get(url: str) -> str | None:
     """Run curl and return HTML body, or None on failure."""
     try:
         result = subprocess.run(
@@ -54,13 +59,15 @@ def _curl_get(url: str) -> Optional[str]:
         return None
 
 
-def _parse_actor_search(html: str) -> List[Dict[str, str]]:
+def _parse_actor_search(html: str) -> list[dict[str, str]]:
     """Parse actor search results (actor-box)."""
     soup = BeautifulSoup(html, "html.parser")
-    actors: List[Dict[str, str]] = []
+    actors: list[dict[str, str]] = []
 
     title_tag = soup.find("title")
-    if title_tag and ("cloudflare" in title_tag.get_text().lower() or "challenge" in title_tag.get_text().lower()):
+    if title_tag and (
+        "cloudflare" in title_tag.get_text().lower() or "challenge" in title_tag.get_text().lower()
+    ):
         logger.warning("JavDb returned Cloudflare challenge page")
         return actors
 
@@ -92,14 +99,16 @@ def _parse_actor_search(html: str) -> List[Dict[str, str]]:
     return actors
 
 
-def _parse_movie_list(html: str, limit: int = 10) -> List[Dict[str, Any]]:
+def _parse_movie_list(html: str, limit: int = 10) -> list[dict[str, Any]]:
     """Parse movie-list from actor page."""
 
     soup = BeautifulSoup(html, "html.parser")
-    works: List[Dict[str, Any]] = []
+    works: list[dict[str, Any]] = []
 
     title_tag = soup.find("title")
-    if title_tag and ("cloudflare" in title_tag.get_text().lower() or "challenge" in title_tag.get_text().lower()):
+    if title_tag and (
+        "cloudflare" in title_tag.get_text().lower() or "challenge" in title_tag.get_text().lower()
+    ):
         logger.warning("JavDb returned Cloudflare challenge page")
         return works
 
@@ -140,13 +149,15 @@ def _parse_movie_list(html: str, limit: int = 10) -> List[Dict[str, Any]]:
                 url = f"https://javdb.com{url}"
 
             if av_id:
-                works.append({
-                    "id": av_id,
-                    "title": title,
-                    "date": date or "未知",
-                    "img": img,
-                    "url": url,
-                })
+                works.append(
+                    {
+                        "id": av_id,
+                        "title": title,
+                        "date": date or "未知",
+                        "img": img,
+                        "url": url,
+                    }
+                )
         except Exception:
             continue
 
@@ -156,12 +167,12 @@ def _parse_movie_list(html: str, limit: int = 10) -> List[Dict[str, Any]]:
 class JavDbScraper:
     """High-level JavDb scraping with caching."""
 
-    def __init__(self, cache: Optional[TTLCache] = None, cache_ttl: int = 21600):
+    def __init__(self, cache: TTLCache | None = None, cache_ttl: int = 21600):
         self._cache = cache or TTLCache(max_size=512, default_ttl=cache_ttl)
         self._last_request = 0.0
         self._request_lock = asyncio.Lock()
 
-    async def _rate_limited_curl(self, url: str) -> Optional[str]:
+    async def _rate_limited_curl(self, url: str) -> str | None:
         """Run curl with rate limiting via thread pool."""
         async with self._request_lock:
             now = time.monotonic()
@@ -171,7 +182,7 @@ class JavDbScraper:
             self._last_request = time.monotonic()
             return await asyncio.to_thread(_curl_get, url)
 
-    async def search_actress(self, name: str) -> Optional[Dict[str, str]]:
+    async def search_actress(self, name: str) -> dict[str, str] | None:
         """Search for an actress on JavDb. Returns first match or None."""
         cache_key = ("javdb_search", name.lower().strip())
         cached = self._cache.get(cache_key)
@@ -191,7 +202,7 @@ class JavDbScraper:
         self._cache.set(cache_key, result)
         return result
 
-    async def get_actor_works(self, actor_url: str, limit: int = 10) -> List[Dict[str, Any]]:
+    async def get_actor_works(self, actor_url: str, limit: int = 10) -> list[dict[str, Any]]:
         """Get works list from an actor's JavDb page."""
         cache_key = ("javdb_works", actor_url, limit)
         cached = self._cache.get(cache_key)
@@ -207,7 +218,7 @@ class JavDbScraper:
             self._cache.set(cache_key, works)
         return works
 
-    async def get_actress_works(self, name: str, limit: int = 10) -> List[Dict[str, Any]]:
+    async def get_actress_works(self, name: str, limit: int = 10) -> list[dict[str, Any]]:
         """Get works for an actress by name. High-level: search then fetch works.
 
         Returns empty list if actress not found or fetch fails.
@@ -217,7 +228,7 @@ class JavDbScraper:
             return []
         return await self.get_actor_works(actor["url"], limit=limit)
 
-    async def get_actors_ranking(self, limit: int = 20, page: int = 1) -> List[Dict[str, Any]]:
+    async def get_actors_ranking(self, limit: int = 20, page: int = 1) -> list[dict[str, Any]]:
         """Scrape JavDb actor listing (sorted by popularity). Uses curl (Cloudflare bypass).
 
         Returns list of dicts with keys: name, url, avatar.

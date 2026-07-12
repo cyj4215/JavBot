@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..config import BotConfig
@@ -14,7 +14,7 @@ class _SharedState:
     service: ActressService
 
 
-_shared: Optional[_SharedState] = None
+_shared: _SharedState | None = None
 
 
 def _set_shared(config: BotConfig, service: ActressService) -> None:

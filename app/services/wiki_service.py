@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote, urlparse
 
 import requests
@@ -22,15 +22,15 @@ class WikiService:
         proxy_addr: str,
         wiki_user_agent: str,
         http_session: requests.Session,
-        wiki_page_cache: "TTLCache",
-        wiki_limiter: "RateLimiter",
+        wiki_page_cache: TTLCache,
+        wiki_limiter: RateLimiter,
     ):
         self.proxy_addr = proxy_addr
         self.wiki_user_agent = wiki_user_agent
         self.http = http_session
         self.wiki_page_cache = wiki_page_cache
         self._wiki_limiter = wiki_limiter
-        self._wiki_instances: Dict[str, wikipediaapi.Wikipedia] = {}
+        self._wiki_instances: dict[str, wikipediaapi.Wikipedia] = {}
 
     def _get_wiki(self, lang: str) -> wikipediaapi.Wikipedia:
         if lang not in self._wiki_instances:
@@ -43,9 +43,7 @@ class WikiService:
     # 公共方法
     # ------------------------------------------------------------------
 
-    def wiki_page_by_lang(
-        self, topic: str, from_lang: str, to_lang: str
-    ) -> Dict[str, Any]:
+    def wiki_page_by_lang(self, topic: str, from_lang: str, to_lang: str) -> dict[str, Any]:
         logger = logging.getLogger(__name__)
 
         cache_key = ("wiki_page", topic, from_lang, to_lang)
@@ -89,10 +87,10 @@ class WikiService:
             logger.warning("维基百科查询异常: %s", e, exc_info=True)
             return {}
 
-    def wiki_aliases(self, name: str) -> List[str]:
+    def wiki_aliases(self, name: str) -> list[str]:
         from .text_utils import contains_cjk, normalize_name
 
-        aliases: List[str] = []
+        aliases: list[str] = []
         seen: set = set()
 
         def add(v: str) -> None:
@@ -111,10 +109,16 @@ class WikiService:
             add(p.get("title", ""))
         return aliases
 
-    def get_star_extra_info(self, wiki_url: str) -> Dict[str, Any]:
+    def get_star_extra_info(self, wiki_url: str) -> dict[str, Any]:
         logger = logging.getLogger(__name__)
 
-        info: Dict[str, Any] = {"birth_date": "", "height": "", "measurements": "", "cup": "", "socials": []}
+        info: dict[str, Any] = {
+            "birth_date": "",
+            "height": "",
+            "measurements": "",
+            "cup": "",
+            "socials": [],
+        }
         if not wiki_url:
             logger.debug("wiki_url为空，无法获取extra_info")
             return info
@@ -128,10 +132,12 @@ class WikiService:
 
         info["birth_date"] = from_wiki.get("birth_date") or from_wikidata.get("birth_date") or ""
         info["height"] = from_wiki.get("height") or from_wikidata.get("height") or ""
-        info["measurements"] = from_wiki.get("measurements") or from_wikidata.get("measurements") or ""
+        info["measurements"] = (
+            from_wiki.get("measurements") or from_wikidata.get("measurements") or ""
+        )
         info["cup"] = from_wiki.get("cup") or from_wikidata.get("cup") or ""
 
-        socials: List[Dict[str, str]] = []
+        socials: list[dict[str, str]] = []
         seen: set = set()
         for src in [from_wikidata.get("socials", []), from_wiki.get("socials", [])]:
             for s in src:
@@ -177,7 +183,9 @@ class WikiService:
                 if qid:
                     return qid
         except Exception:
-            logging.getLogger(__name__).debug("提取Wikidata实体ID失败: wiki_url=%s", wiki_url, exc_info=True)
+            logging.getLogger(__name__).debug(
+                "提取Wikidata实体ID失败: wiki_url=%s", wiki_url, exc_info=True
+            )
             return ""
         return ""
 
@@ -194,8 +202,14 @@ class WikiService:
         t = " ".join(t.split())
         return t.strip()
 
-    def _extract_info_from_wikidata(self, wiki_url: str) -> Dict[str, Any]:
-        info: Dict[str, Any] = {"birth_date": "", "height": "", "measurements": "", "cup": "", "socials": []}
+    def _extract_info_from_wikidata(self, wiki_url: str) -> dict[str, Any]:
+        info: dict[str, Any] = {
+            "birth_date": "",
+            "height": "",
+            "measurements": "",
+            "cup": "",
+            "socials": [],
+        }
         qid = self._extract_wikidata_entity_id(wiki_url)
         if not qid:
             return info
@@ -220,14 +234,18 @@ class WikiService:
                 return ""
 
             for item in claims.get("P569") or []:
-                dv = (((item or {}).get("mainsnak") or {}).get("datavalue") or {}).get("value") or {}
+                dv = (((item or {}).get("mainsnak") or {}).get("datavalue") or {}).get(
+                    "value"
+                ) or {}
                 birth = self._format_wikidata_time(dv.get("time", ""))
                 if birth:
                     info["birth_date"] = birth
                     break
 
             for item in claims.get("P2048") or []:
-                dv = (((item or {}).get("mainsnak") or {}).get("datavalue") or {}).get("value") or {}
+                dv = (((item or {}).get("mainsnak") or {}).get("datavalue") or {}).get(
+                    "value"
+                ) or {}
                 amount_raw = dv.get("amount", "")
                 unit = dv.get("unit", "")
                 if not amount_raw:
@@ -235,7 +253,9 @@ class WikiService:
                 try:
                     amount = abs(float(amount_raw))
                 except Exception:
-                    logging.getLogger(__name__).debug("解析身高数值失败: %s", amount_raw, exc_info=True)
+                    logging.getLogger(__name__).debug(
+                        "解析身高数值失败: %s", amount_raw, exc_info=True
+                    )
                     continue
                 if unit.endswith("/Q11573"):
                     info["height"] = f"{round(amount * 100)} cm"
@@ -243,7 +263,7 @@ class WikiService:
                     info["height"] = f"{amount:g}"
                 break
 
-            socials: List[Dict[str, str]] = []
+            socials: list[dict[str, str]] = []
             social_map = [
                 ("P2002", "X/Twitter", "https://x.com/{v}"),
                 ("P2003", "Instagram", "https://www.instagram.com/{v}"),
@@ -262,12 +282,20 @@ class WikiService:
                 socials.append({"label": label, "url": url})
             info["socials"] = socials
         except Exception:
-            logging.getLogger(__name__).debug("从Wikidata提取信息失败: wiki_url=%s", wiki_url, exc_info=True)
+            logging.getLogger(__name__).debug(
+                "从Wikidata提取信息失败: wiki_url=%s", wiki_url, exc_info=True
+            )
             return info
         return info
 
-    def _extract_info_from_wikipedia(self, wiki_url: str) -> Dict[str, Any]:
-        info: Dict[str, Any] = {"birth_date": "", "height": "", "measurements": "", "cup": "", "socials": []}
+    def _extract_info_from_wikipedia(self, wiki_url: str) -> dict[str, Any]:
+        info: dict[str, Any] = {
+            "birth_date": "",
+            "height": "",
+            "measurements": "",
+            "cup": "",
+            "socials": [],
+        }
         try:
             self._wiki_limiter.wait()
             resp = self.http.get(
@@ -282,7 +310,7 @@ class WikiService:
             if not infobox:
                 return info
 
-            def contains_any(label: str, keywords: List[str]) -> bool:
+            def contains_any(label: str, keywords: list[str]) -> bool:
                 return any(k in label for k in keywords)
 
             for row in infobox.find_all("tr"):
@@ -314,7 +342,7 @@ class WikiService:
                     if not info["cup"]:
                         info["cup"] = value
 
-            socials: List[Dict[str, str]] = []
+            socials: list[dict[str, str]] = []
             seen_urls: set = set()
             for a in infobox.find_all("a", href=True):
                 href = a.get("href", "").strip()
@@ -324,7 +352,13 @@ class WikiService:
                     continue
                 if any(
                     k in href.lower()
-                    for k in ["x.com/", "twitter.com/", "instagram.com/", "tiktok.com/", "youtube.com/"]
+                    for k in [
+                        "x.com/",
+                        "twitter.com/",
+                        "instagram.com/",
+                        "tiktok.com/",
+                        "youtube.com/",
+                    ]
                 ):
                     if href not in seen_urls:
                         label = "链接"
@@ -340,6 +374,8 @@ class WikiService:
                         seen_urls.add(href)
             info["socials"] = socials
         except Exception:
-            logging.getLogger(__name__).debug("从Wikipedia提取信息失败: wiki_url=%s", wiki_url, exc_info=True)
+            logging.getLogger(__name__).debug(
+                "从Wikipedia提取信息失败: wiki_url=%s", wiki_url, exc_info=True
+            )
             return info
         return info

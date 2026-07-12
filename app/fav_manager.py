@@ -1,12 +1,13 @@
 """
 收藏功能模块 — 异步 MySQL 实现 (aiomysql)
 """
+
 from __future__ import annotations
 
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import aiomysql
 
@@ -92,12 +93,11 @@ _SQL_INIT = [
 
 
 class FavoritesManager:
-
     def __init__(self, pool: aiomysql.Pool):
         self._pool = pool
 
     @classmethod
-    async def create(cls, config) -> "FavoritesManager":
+    async def create(cls, config) -> FavoritesManager:
         """Create manager with connection pool and initialize tables."""
         pool = await aiomysql.create_pool(
             host=config.mysql_host,
@@ -132,13 +132,13 @@ class FavoritesManager:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    async def _select_one(self, query: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
+    async def _select_one(self, query: str, params: tuple = ()) -> dict[str, Any] | None:
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(query, params)
                 return await cur.fetchone()
 
-    async def _select_all(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
+    async def _select_all(self, query: str, params: tuple = ()) -> list[dict[str, Any]]:
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(query, params)
@@ -159,9 +159,9 @@ class FavoritesManager:
     async def sync_user(
         self,
         user_id: int,
-        username: Optional[str] = None,
-        first_name: Optional[str] = None,
-        last_name: Optional[str] = None,
+        username: str | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
     ) -> bool:
         try:
             await self._execute(
@@ -188,12 +188,16 @@ class FavoritesManager:
         self,
         user_id: int,
         actress_name: str,
-        actress_id: Optional[str] = None,
-        actress_data: Optional[dict] = None,
+        actress_id: str | None = None,
+        actress_data: dict | None = None,
     ) -> bool:
         try:
             await self.sync_user(user_id)
-            extra_only = {"extra_info": actress_data.get("extra_info")} if actress_data and actress_data.get("extra_info") else None
+            extra_only = (
+                {"extra_info": actress_data.get("extra_info")}
+                if actress_data and actress_data.get("extra_info")
+                else None
+            )
             actress_data_json = json.dumps(extra_only, ensure_ascii=False) if extra_only else None
 
             async with self._pool.acquire() as conn:
@@ -241,8 +245,8 @@ class FavoritesManager:
         self,
         user_id: int,
         limit: int = 10,
-        cursor: Optional[Tuple[str, int]] = None,
-    ) -> Dict[str, Any]:
+        cursor: tuple[str, int] | None = None,
+    ) -> dict[str, Any]:
         try:
             if cursor is not None:
                 created_at_val, row_id_val = cursor
@@ -252,7 +256,9 @@ class FavoritesManager:
                 where = "WHERE user_id = %s"
                 params = (user_id,)
 
-            count_row = await self._select_one(f"SELECT COUNT(*) AS cnt FROM favorites {where}", params)
+            count_row = await self._select_one(
+                f"SELECT COUNT(*) AS cnt FROM favorites {where}", params
+            )
             total = count_row["cnt"] if count_row else 0
 
             rows = await self._select_all(
@@ -282,7 +288,7 @@ class FavoritesManager:
                         fav["actress_data"] = None
                 favorites.append(fav)
 
-            next_cursor: Optional[Tuple[str, int]] = None
+            next_cursor: tuple[str, int] | None = None
             if len(favorites) == limit and favorites:
                 last = favorites[-1]
                 next_cursor = (last["created_at"], last["id"])
@@ -333,7 +339,7 @@ class FavoritesManager:
             logger.error(f"记录查询历史失败: {e}")
             return False
 
-    async def get_recent_favorite_queries(self, user_id: int, limit: int = 10) -> List[Dict]:
+    async def get_recent_favorite_queries(self, user_id: int, limit: int = 10) -> list[dict]:
         try:
             rows = await self._select_all(
                 """
@@ -345,12 +351,15 @@ class FavoritesManager:
                 """,
                 (user_id, limit),
             )
-            return [{"actress_name": r["actress_name"], "query_time": str(r["query_time"])} for r in rows]
+            return [
+                {"actress_name": r["actress_name"], "query_time": str(r["query_time"])}
+                for r in rows
+            ]
         except Exception as e:
             logger.error(f"获取查询记录失败: {e}")
             return []
 
-    async def get_last_query_time_map(self, user_id: int) -> Dict[str, str]:
+    async def get_last_query_time_map(self, user_id: int) -> dict[str, str]:
         """Get the most recent query time for each favorite actress."""
         try:
             rows = await self._select_all(
@@ -363,7 +372,7 @@ class FavoritesManager:
                 """,
                 (user_id,),
             )
-            result: Dict[str, str] = {}
+            result: dict[str, str] = {}
             for r in rows:
                 val = r.get("last_query")
                 result[r["actress_name"]] = str(val)[:16] if val and val is not None else ""
@@ -380,10 +389,10 @@ class FavoritesManager:
         self,
         actress_name: str,
         av_id: str,
-        title: Optional[str] = None,
-        date: Optional[str] = None,
-        url: Optional[str] = None,
-        img: Optional[str] = None,
+        title: str | None = None,
+        date: str | None = None,
+        url: str | None = None,
+        img: str | None = None,
     ) -> bool:
         try:
             async with self._pool.acquire() as conn:
@@ -406,7 +415,7 @@ class FavoritesManager:
     # Push settings
     # ------------------------------------------------------------------
 
-    async def export_favorites(self, user_id: int) -> Optional[str]:
+    async def export_favorites(self, user_id: int) -> str | None:
         """Export favorites as JSON string. Returns None if no favorites."""
         try:
             result = await self.get_favorites(user_id, limit=1000)
@@ -466,7 +475,7 @@ class FavoritesManager:
             logger.error(f"更新检查时间失败: {e}")
             return False
 
-    async def get_users_with_push_enabled(self) -> List[int]:
+    async def get_users_with_push_enabled(self) -> list[int]:
         try:
             rows = await self._select_all(
                 """
@@ -563,7 +572,9 @@ class FavoritesManager:
                     deleted_works = cur.rowcount
                     await conn.commit()
             if deleted_queries > 0 or deleted_works > 0:
-                logger.info(f"清理过期数据: 删除 {deleted_queries} 条查询记录, {deleted_works} 条作品记录")
+                logger.info(
+                    f"清理过期数据: 删除 {deleted_queries} 条查询记录, {deleted_works} 条作品记录"
+                )
         except Exception as e:
             logger.error(f"清理过期数据失败: {e}")
 
@@ -572,7 +583,12 @@ class FavoritesManager:
         try:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cur:
-                    for tbl in ("favorite_queries", "actress_works", "favorites", "user_push_settings"):
+                    for tbl in (
+                        "favorite_queries",
+                        "actress_works",
+                        "favorites",
+                        "user_push_settings",
+                    ):
                         await cur.execute(f"OPTIMIZE TABLE {tbl}")
                     await conn.commit()
             logger.info("数据库优化完成")
@@ -580,7 +596,7 @@ class FavoritesManager:
             logger.error(f"数据库优化失败: {e}")
 
 
-_favorites_manager: Optional[FavoritesManager] = None
+_favorites_manager: FavoritesManager | None = None
 
 
 async def get_favorites_manager(config=None) -> FavoritesManager:

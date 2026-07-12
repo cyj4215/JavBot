@@ -9,7 +9,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from ..formatters import format_rankings, build_rank_keyboard
+from ..formatters import build_rank_keyboard, format_rankings
 from .common import require_auth, send_photo_with_fallback
 
 logger = logging.getLogger(__name__)
@@ -18,9 +18,12 @@ if TYPE_CHECKING:
     from telegram import CallbackQuery, Message, Update
 
 
-async def send_rank_avatars_for_page(msg: Message, stars: list[dict[str, Any]], page: int, limit: int, shared=None) -> None:
+async def send_rank_avatars_for_page(
+    msg: Message, stars: list[dict[str, Any]], page: int, limit: int, shared=None
+) -> None:
     if shared is None:
         from . import _get_shared
+
         shared = _get_shared()
     if not shared.config.rank_feature_avatars:
         return
@@ -38,16 +41,31 @@ async def send_rank_avatars_for_page(msg: Message, stars: list[dict[str, Any]], 
         sent += 1
 
 
-async def _handle_rank_error(target: Message | CallbackQuery, limit: int, page: int, is_edit: bool = False, loading: bool = False, _t=lambda k, *a: k) -> None:
+async def _handle_rank_error(
+    target: Message | CallbackQuery,
+    limit: int,
+    page: int,
+    is_edit: bool = False,
+    loading: bool = False,
+    _t=lambda k, *a: k,
+) -> None:
     text = _t("rank_still_loading" if loading else "rank_error")
     safe_limit = max(1, min(limit, 50))
     safe_page = max(1, min(page, 5))
-    reply_markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton(_t("rank_retry"), callback_data=f"rank_retry:{safe_limit}:{safe_page}")]
-    ])
+    reply_markup = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    _t("rank_retry"), callback_data=f"rank_retry:{safe_limit}:{safe_page}"
+                )
+            ]
+        ]
+    )
     if is_edit:
         try:
-            await target.edit_message_text(text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+            await target.edit_message_text(
+                text, parse_mode=ParseMode.HTML, reply_markup=reply_markup
+            )
         except Exception:
             logger.debug("编辑排行榜消息失败", exc_info=True)
     else:
@@ -69,11 +87,19 @@ async def _send_rank_result(
     if not stars:
         if shared is None:
             from . import _get_shared
+
             shared = _get_shared()
         cached_stars = shared.service.get_rank_cache(("rank", limit, page))
         if cached_stars:
-            text = _t("rank_cached") + "\n\n" + format_rankings(cached_stars, page, limit=limit, _t=_t)
-            kwargs = dict(text=text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=build_rank_keyboard(limit, page, with_avatars))
+            text = (
+                _t("rank_cached") + "\n\n" + format_rankings(cached_stars, page, limit=limit, _t=_t)
+            )
+            kwargs = dict(
+                text=text,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True,
+                reply_markup=build_rank_keyboard(limit, page, with_avatars),
+            )
             if is_edit:
                 await target.edit_message_text(**kwargs)
             else:
@@ -81,7 +107,12 @@ async def _send_rank_result(
         else:
             await _handle_rank_error(target, limit, page, is_edit=is_edit)
     else:
-        kwargs = dict(text=format_rankings(stars, page, limit=limit, _t=_t), parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=build_rank_keyboard(limit, page, with_avatars))
+        kwargs = dict(
+            text=format_rankings(stars, page, limit=limit, _t=_t),
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+            reply_markup=build_rank_keyboard(limit, page, with_avatars),
+        )
         if is_edit:
             await target.edit_message_text(**kwargs)
         else:
@@ -93,6 +124,7 @@ async def _send_rank_result(
 @require_auth
 async def rank_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared) -> None:
     from .common import make_t
+
     _ = await make_t(shared, update)
     limit = shared.config.rank_limit_default
     page = shared.config.rank_page_default
@@ -109,7 +141,15 @@ async def rank_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shar
         if not stars and not has_cache:
             await _handle_rank_error(waiting, limit, page, loading=True, _t=_)
         else:
-            await _send_rank_result(waiting, stars, limit, page, with_avatars=shared.config.rank_feature_avatars, _t=_, shared=shared)
+            await _send_rank_result(
+                waiting,
+                stars,
+                limit,
+                page,
+                with_avatars=shared.config.rank_feature_avatars,
+                _t=_,
+                shared=shared,
+            )
     except Exception as exc:
         logger.exception("rank fetch failed: %s", exc)
         await _handle_rank_error(waiting, limit, page, loading=not has_cache, _t=_)
@@ -159,7 +199,17 @@ async def rank_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await q.answer(_("rank_loading"))
     try:
         stars = await shared.service.get_hot_star_rankings(limit, page)
-        await _send_rank_result(q, stars, limit, page, with_avatars=with_avatars, is_edit=True, msg=q.message, _t=_, shared=shared)
+        await _send_rank_result(
+            q,
+            stars,
+            limit,
+            page,
+            with_avatars=with_avatars,
+            is_edit=True,
+            msg=q.message,
+            _t=_,
+            shared=shared,
+        )
     except Exception as exc:
         logger.exception("rank callback failed: %s", exc)
         await _handle_rank_error(q, limit, page, is_edit=True, _t=_)

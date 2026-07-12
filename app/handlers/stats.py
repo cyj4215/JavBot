@@ -46,9 +46,11 @@ def _labels_for_lang(lang: str) -> dict:
 
 
 @require_auth
-async def stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg: Message, shared) -> None:
-    user = update.effective_user
+async def stats_cmd(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, msg: Message, shared
+) -> None:
     lang = await _get_lang(shared, update)
+
     def _(key, *a):
         return shared.service.i18n.t(key, lang, *a)
 

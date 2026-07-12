@@ -3,18 +3,18 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from jvav import JavBusUtil
 
 from .cache import TTLCache
 from .http_utils import build_retry_session
 from .models import ActressProfile
+from .rate_limiter import RateLimiter
+from .services import JavBusService, NameMatchService, ProfileResolver, WikiService
 from .services.i18n_service import I18nService
 from .services.javdb_scraper import JavDbScraper
 from .services.rank_service import RankService
-from .rate_limiter import RateLimiter
-from .services import JavBusService, NameMatchService, ProfileResolver, WikiService
 from .services.text_utils import normalize_name
 
 try:
@@ -37,9 +37,9 @@ class ActressService:
         rank_cache_ttl: int = 900,
         i18n_default_language: str = "zh_CN",
         *,
-        wiki_service: Optional[WikiService] = None,
-        javbus_service: Optional[JavBusService] = None,
-        name_match_service: Optional[NameMatchService] = None,
+        wiki_service: WikiService | None = None,
+        javbus_service: JavBusService | None = None,
+        name_match_service: NameMatchService | None = None,
     ):
         self.latest_limit = latest_limit
         self.top_limit = top_limit
@@ -53,16 +53,34 @@ class ActressService:
         self.http = build_retry_session(proxy_addr=proxy_addr)
 
         _cache_dir = os.path.join(os.getcwd(), "data", "cache")
-        self.profile_cache: TTLCache = TTLCache(max_size=2048, default_ttl=profile_cache_ttl, persist_path=os.path.join(_cache_dir, "profile.json"))
-        self.av_meta_cache: TTLCache = TTLCache(max_size=4096, default_ttl=43200, persist_path=os.path.join(_cache_dir, "av_meta.json"))
-        self.wiki_page_cache: TTLCache = TTLCache(max_size=2048, default_ttl=3600, persist_path=os.path.join(_cache_dir, "wiki_page.json"))
-        self.rank_cache: TTLCache = TTLCache(max_size=32, default_ttl=rank_cache_ttl, persist_path=os.path.join(_cache_dir, "rank.json"))
-        self._javdb_cache: TTLCache = TTLCache(max_size=512, default_ttl=21600, persist_path=os.path.join(_cache_dir, "javdb.json"))
+        self.profile_cache: TTLCache = TTLCache(
+            max_size=2048,
+            default_ttl=profile_cache_ttl,
+            persist_path=os.path.join(_cache_dir, "profile.json"),
+        )
+        self.av_meta_cache: TTLCache = TTLCache(
+            max_size=4096, default_ttl=43200, persist_path=os.path.join(_cache_dir, "av_meta.json")
+        )
+        self.wiki_page_cache: TTLCache = TTLCache(
+            max_size=2048, default_ttl=3600, persist_path=os.path.join(_cache_dir, "wiki_page.json")
+        )
+        self.rank_cache: TTLCache = TTLCache(
+            max_size=32,
+            default_ttl=rank_cache_ttl,
+            persist_path=os.path.join(_cache_dir, "rank.json"),
+        )
+        self._javdb_cache: TTLCache = TTLCache(
+            max_size=512, default_ttl=21600, persist_path=os.path.join(_cache_dir, "javdb.json")
+        )
         self._javdb_scraper = JavDbScraper(cache=self._javdb_cache)
         self._javbus_limiter: RateLimiter = RateLimiter(calls_per_second=0.5)
         self._wiki_limiter: RateLimiter = RateLimiter(calls_per_second=1.0)
 
-        self._rank_svc = RankService(rank_cache=self.rank_cache, refresh_interval=rank_cache_ttl, javdb_scraper=self._javdb_scraper)
+        self._rank_svc = RankService(
+            rank_cache=self.rank_cache,
+            refresh_interval=rank_cache_ttl,
+            javdb_scraper=self._javdb_scraper,
+        )
         self.i18n = I18nService(default_lang=i18n_default_language)
 
         self._wiki_svc = wiki_service or WikiService(
@@ -91,16 +109,16 @@ class ActressService:
             javbus_limiter=self._javbus_limiter,
         )
 
-    def get_av_magnets(self, av_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+    def get_av_magnets(self, av_id: str, limit: int = 5) -> list[dict[str, Any]]:
         return self._javbus_svc.get_av_magnets(av_id, limit=limit)
 
-    def get_av_meta(self, av_id: str) -> Dict[str, Any]:
+    def get_av_meta(self, av_id: str) -> dict[str, Any]:
         return self._javbus_svc.get_av_meta(av_id)
 
     def get_rank_cache(self, key):
         return self.rank_cache.get(key)
 
-    async def get_hot_star_rankings(self, limit: int = 20, page: int = 1) -> List[Dict[str, Any]]:
+    async def get_hot_star_rankings(self, limit: int = 20, page: int = 1) -> list[dict[str, Any]]:
         return await self._rank_svc.get_hot_star_rankings(limit=limit, page=page)
 
     async def start_rank_background_refresh(self) -> None:
@@ -112,9 +130,7 @@ class ActressService:
         if cached is not None:
             return ActressProfile(**cached)
 
-        matched_name, star, suggestions = await asyncio.to_thread(
-            self._resolver.resolve, name
-        )
+        matched_name, star, suggestions = await asyncio.to_thread(self._resolver.resolve, name)
 
         if not star:
             result = ActressProfile(
@@ -128,13 +144,13 @@ class ActressService:
         star_name = star.get("star_name", name)
         star_id = star.get("star_id", "")
 
-        def load_latest() -> List[Dict[str, Any]]:
+        def load_latest() -> list[dict[str, Any]]:
             code, ids = self.javbus.get_new_ids_by_star_name(star_name)
             if code == 200 and ids:
                 return self._javbus_svc.build_latest_works(ids[: self.latest_limit])
             return []
 
-        def load_wiki_extra() -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        def load_wiki_extra() -> tuple[dict[str, Any], dict[str, Any]]:
             wiki_page = self._wiki_svc.wiki_page_by_lang(star_name, from_lang="ja", to_lang="zh")
             extra_info = self._wiki_svc.get_star_extra_info(wiki_page.get("url", ""))
             return wiki_page, extra_info
@@ -162,14 +178,14 @@ class ActressService:
                     latest_works.append(w)
         latest_works.sort(key=lambda w: w.get("date") or "0", reverse=True)
 
-        avatar_url: Optional[str] = None
+        avatar_url: str | None = None
         if isinstance(avatar_result, Exception):
             logging.getLogger(__name__).debug("获取头像失败", exc_info=avatar_result)
         elif avatar_result and isinstance(avatar_result, dict):
             avatar_url = avatar_result.get("avatar", "")
 
-        wiki_page: Dict[str, Any] = {}
-        extra_info: Dict[str, Any] = {}
+        wiki_page: dict[str, Any] = {}
+        extra_info: dict[str, Any] = {}
         if isinstance(wiki_result, Exception):
             logging.getLogger(__name__).debug("获取维基信息失败", exc_info=wiki_result)
         else:

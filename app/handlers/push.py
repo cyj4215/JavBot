@@ -98,7 +98,9 @@ async def check_and_push_new_works(context: ContextTypes.DEFAULT_TYPE) -> None:
             if new_works_for_user:
                 for item in new_works_for_user:
                     try:
-                        await send_new_work_notification(context.bot, user_id, item["actress_name"], item["work"])
+                        await send_new_work_notification(
+                            context.bot, user_id, item["actress_name"], item["work"]
+                        )
                     except Exception as e:
                         logger.error(f"推送作品给用户 {user_id} 失败: {e}")
 
@@ -110,7 +112,7 @@ async def check_and_push_new_works(context: ContextTypes.DEFAULT_TYPE) -> None:
             return new_works_for_user
 
         for batch_start in range(0, len(user_ids), batch_size):
-            batch = user_ids[batch_start:batch_start + batch_size]
+            batch = user_ids[batch_start : batch_start + batch_size]
             logger.info(f"处理用户批次 {batch_start + 1}-{batch_start + len(batch)}")
 
             batch_results = await asyncio.gather(*[check_user(uid) for uid in batch])
@@ -140,7 +142,9 @@ async def check_and_push_new_works(context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.error(f"推送检查任务发生未预期异常: {e}", exc_info=True)
 
 
-async def send_new_work_notification(bot: Bot, user_id: int, actress_name: str, work: dict[str, Any]) -> None:
+async def send_new_work_notification(
+    bot: Bot, user_id: int, actress_name: str, work: dict[str, Any]
+) -> None:
     from . import _get_shared
 
     shared = _get_shared()
@@ -163,14 +167,27 @@ async def send_new_work_notification(bot: Bot, user_id: int, actress_name: str, 
 
         full_text = "\n".join(lines)
 
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(f"🧲 搜索 {av_id} 磁力", callback_data=_short_callback("magnet", av_id))],
-            [InlineKeyboardButton(f"👩 查询 {actress_name}", callback_data=_short_callback("favquery", actress_name))]
-        ])
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        f"🧲 搜索 {av_id} 磁力", callback_data=_short_callback("magnet", av_id)
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        f"👩 查询 {actress_name}",
+                        callback_data=_short_callback("favquery", actress_name),
+                    )
+                ],
+            ]
+        )
 
         await send_photo_with_fallback(
-            bot=bot, chat_id=user_id,
-            img_url=img, caption=full_text,
+            bot=bot,
+            chat_id=user_id,
+            img_url=img,
+            caption=full_text,
             proxy_addr=shared.config.proxy_addr,
             reply_markup=keyboard,
         )
@@ -187,9 +204,7 @@ async def push_toggle_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, ms
         settings = await favorites_manager.get_push_settings(user.id)
         status = "✅ 已开启" if settings.get("push_enabled", True) else "❌ 已关闭"
         await msg.reply_text(
-            f"📰 新作品推送状态：{status}\n\n"
-            "使用 /push on 开启推送\n"
-            "使用 /push off 关闭推送"
+            f"📰 新作品推送状态：{status}\n\n使用 /push on 开启推送\n使用 /push off 关闭推送"
         )
         return
 

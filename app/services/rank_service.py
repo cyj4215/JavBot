@@ -1,9 +1,10 @@
 """Rank service — JavDb actress rankings via curl-based scraper (Cloudflare bypass)."""
+
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ..cache import TTLCache
@@ -14,14 +15,18 @@ _OVERALL_TIMEOUT_S = 30
 
 
 class RankService:
-
-    def __init__(self, rank_cache: "TTLCache", refresh_interval: int = 600, javdb_scraper: Optional["JavDbScraper"] = None):
+    def __init__(
+        self,
+        rank_cache: TTLCache,
+        refresh_interval: int = 600,
+        javdb_scraper: JavDbScraper | None = None,
+    ):
         self.rank_cache = rank_cache
         self.refresh_interval = refresh_interval
-        self._refresh_task: Optional[asyncio.Task] = None
+        self._refresh_task: asyncio.Task | None = None
         self._warming = False
         self._scraper = javdb_scraper
-        self._last_good: Dict[tuple, List[Dict[str, Any]]] = {}
+        self._last_good: dict[tuple, list[dict[str, Any]]] = {}
 
     async def start_background_refresh(self) -> None:
         if self._refresh_task is not None:
@@ -61,7 +66,7 @@ class RankService:
         finally:
             self._warming = False
 
-    async def get_hot_star_rankings(self, limit: int = 20, page: int = 1) -> List[Dict[str, Any]]:
+    async def get_hot_star_rankings(self, limit: int = 20, page: int = 1) -> list[dict[str, Any]]:
         limit = max(1, min(limit, 50))
         page = max(1, min(page, 5))
         cache_key = ("rank", limit, page)
@@ -76,7 +81,7 @@ class RankService:
             )
             if result is not None:
                 return result
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logging.warning("排行榜获取超时(%ds)，返回缓存", _OVERALL_TIMEOUT_S)
 
         if page == 1:
@@ -92,7 +97,7 @@ class RankService:
 
     async def _try_javdb_rankings(
         self, limit: int, page: int, timeout: int = _FETCH_TIMEOUT_MS
-    ) -> List[Dict[str, Any]] | None:
+    ) -> list[dict[str, Any]] | None:
         if self._scraper is None:
             logging.error("JavDbScraper not set — call set_scraper() first")
             return None

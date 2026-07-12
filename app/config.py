@@ -1,6 +1,5 @@
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 
 def _env_bool(key: str, default: str = "1") -> bool:
@@ -35,7 +34,7 @@ class BotConfig:
     allowed_user_ids: set[int]
     push_check_interval: int
     push_enabled_global: bool
-    admin_user_id: Optional[int]
+    admin_user_id: int | None
     log_level: str
     i18n_default_language: str
     rank_limit_default: int

@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Optional, Set, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from telegram import InlineKeyboardMarkup, Message, Update
 from telegram.constants import ParseMode
@@ -23,7 +23,7 @@ def log_handler_error(exc: Exception, action: str) -> None:
     _logger.exception("%s: %s", action, exc)
 
 
-def is_allowed(update: Update, allowed_user_ids: Set[int]) -> bool:
+def is_allowed(update: Update, allowed_user_ids: set[int]) -> bool:
     if not allowed_user_ids:
         return True
     user = update.effective_user
@@ -35,8 +35,10 @@ def is_allowed(update: Update, allowed_user_ids: Set[int]) -> bool:
 async def make_t(shared, update):
     """Create i18n _() lambda from shared state and update. Replaces repeated boilerplate."""
     lang = await _get_lang(shared, update)
+
     def _(key, *a):
         return shared.service.i18n.t(key, lang, *a)
+
     return _
 
 
@@ -54,10 +56,10 @@ async def _get_lang(shared, update) -> str:
 
 async def send_photo_with_fallback(
     msg: Message | None = None,
-    img_url: Optional[str] = None,
+    img_url: str | None = None,
     caption: str = "",
     proxy_addr: str = "",
-    reply_markup: Optional[InlineKeyboardMarkup] = None,
+    reply_markup: InlineKeyboardMarkup | None = None,
     *,
     bot: Any = None,
     chat_id: int | None = None,
@@ -67,22 +69,31 @@ async def send_photo_with_fallback(
     async def _send_photo(photo, parse_mode=ParseMode.HTML):
         if bot and chat_id is not None:
             return await bot.send_photo(
-                chat_id=chat_id, photo=photo, caption=caption,
-                parse_mode=parse_mode, reply_markup=reply_markup,
+                chat_id=chat_id,
+                photo=photo,
+                caption=caption,
+                parse_mode=parse_mode,
+                reply_markup=reply_markup,
             )
         return await msg.reply_photo(
-            photo=photo, caption=caption,
-            parse_mode=parse_mode, reply_markup=reply_markup,
+            photo=photo,
+            caption=caption,
+            parse_mode=parse_mode,
+            reply_markup=reply_markup,
         )
 
     async def _send_text(parse_mode=ParseMode.HTML):
         if bot and chat_id is not None:
             return await bot.send_message(
-                chat_id=chat_id, text=caption,
-                parse_mode=parse_mode, reply_markup=reply_markup,
+                chat_id=chat_id,
+                text=caption,
+                parse_mode=parse_mode,
+                reply_markup=reply_markup,
             )
         return await msg.reply_text(
-            caption, parse_mode=parse_mode, reply_markup=reply_markup,
+            caption,
+            parse_mode=parse_mode,
+            reply_markup=reply_markup,
         )
 
     if not img_url:
@@ -113,6 +124,7 @@ def require_auth(func):
             await msg.reply_text("无权限使用此机器人。")
             return
         return await func(update, context, msg, shared, *args, **kwargs)
+
     return wrapper
 
 
@@ -129,6 +141,7 @@ def require_auth_callback(func):
             await q.answer("无权限使用", show_alert=True)
             return
         return await func(update, context, q, shared, *args, **kwargs)
+
     return wrapper
 
 
@@ -136,7 +149,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     from . import _get_shared
 
     shared = _get_shared()
-    msg: Optional[Message] = update.effective_message
+    msg: Message | None = update.effective_message
     if not msg:
         return
 
@@ -151,19 +164,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     text = _("bot_welcome")
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-    keyboard = InlineKeyboardMarkup([
+
+    keyboard = InlineKeyboardMarkup(
         [
-            InlineKeyboardButton(_("menu_search_actress"), callback_data="menu:search"),
-            InlineKeyboardButton(_("menu_magnet"), callback_data="menu:magnet")
-        ],
-        [
-            InlineKeyboardButton(_("menu_rank"), callback_data="menu:rank"),
-            InlineKeyboardButton(_("menu_favorites"), callback_data="menu:favorites")
-        ],
-        [
-            InlineKeyboardButton(_("menu_help"), callback_data="menu:help")
+            [
+                InlineKeyboardButton(_("menu_search_actress"), callback_data="menu:search"),
+                InlineKeyboardButton(_("menu_magnet"), callback_data="menu:magnet"),
+            ],
+            [
+                InlineKeyboardButton(_("menu_rank"), callback_data="menu:rank"),
+                InlineKeyboardButton(_("menu_favorites"), callback_data="menu:favorites"),
+            ],
+            [InlineKeyboardButton(_("menu_help"), callback_data="menu:help")],
         ]
-    ])
+    )
     await msg.reply_text(text, reply_markup=keyboard)
 
 
@@ -171,7 +185,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     from . import _get_shared
 
     shared = _get_shared()
-    msg: Optional[Message] = update.effective_message
+    msg: Message | None = update.effective_message
     if not msg:
         return
 
@@ -210,7 +224,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     from .rank import rank_cmd
 
     shared = _get_shared()
-    q: Optional[CallbackQuery] = update.callback_query
+    q: CallbackQuery | None = update.callback_query
     if not q or not q.message:
         return
 
@@ -230,7 +244,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await q.answer()
         return
 
-    action = data[len("menu:"):]
+    action = data[len("menu:") :]
 
     if action == "search":
         await q.answer(_("search_actress").split("\n")[0])
@@ -268,11 +282,14 @@ async def callback_search(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     query = _resolve_callback("search", data)
     if query is None:
         lang = await _get_lang(shared, update)
-        def _(key, *a): return shared.service.i18n.t(key, lang, *a)
+
+        def _(key, *a):
+            return shared.service.i18n.t(key, lang, *a)
+
         await q.answer(_("fav_expired"), show_alert=True)
         return
     await q.answer(f"🔍 {query}")
-    user_id: Optional[int] = update.effective_user.id if update.effective_user else None
+    user_id: int | None = update.effective_user.id if update.effective_user else None
     await run_search_reply(cast(Message, q.message), query, user_id, shared=shared)
 
 
@@ -293,7 +310,10 @@ async def callback_magnet(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     query = _resolve_callback("magnet", data)
     if query is None:
         lang = await _get_lang(shared, update)
-        def _(key, *a): return shared.service.i18n.t(key, lang, *a)
+
+        def _(key, *a):
+            return shared.service.i18n.t(key, lang, *a)
+
         await q.answer(_("fav_expired"), show_alert=True)
         return
     await q.answer(f"🧲 {query}")

@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
-from pypinyin import pinyin, Style
+from pypinyin import Style, pinyin
 
 from .text_utils import contains_cjk, normalize_name
 
 if TYPE_CHECKING:
     from jvav import JavBusUtil
+
     from ..rate_limiter import RateLimiter
 
 
@@ -17,11 +18,11 @@ class NameMatchService:
 
     def __init__(
         self,
-        javbus_util: "JavBusUtil",
+        javbus_util: JavBusUtil,
         s2t,
         t2s,
-        javbus_limiter: "RateLimiter",
-        alias_map: Optional[Dict[str, str]] = None,
+        javbus_limiter: RateLimiter,
+        alias_map: dict[str, str] | None = None,
     ):
         self.javbus = javbus_util
         self.s2t = s2t
@@ -30,12 +31,12 @@ class NameMatchService:
         self._alias_map = alias_map if alias_map is not None else self._default_alias_map()
 
     @property
-    def alias_map(self) -> Dict[str, str]:
+    def alias_map(self) -> dict[str, str]:
         return self._alias_map
 
-    def name_candidates(self, name: str) -> List[str]:
+    def name_candidates(self, name: str) -> list[str]:
         seen: set = set()
-        candidates: List[str] = []
+        candidates: list[str] = []
 
         def add(v: str) -> None:
             vv = normalize_name(v)
@@ -66,7 +67,7 @@ class NameMatchService:
                 logging.getLogger(__name__).debug("拼音转换失败", exc_info=True)
         return candidates
 
-    def find_star(self, candidates: List[str]) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+    def find_star(self, candidates: list[str]) -> tuple[str | None, dict[str, Any] | None]:
         for cand in candidates:
             try:
                 self._javbus_limiter.wait()
@@ -108,7 +109,7 @@ class NameMatchService:
             return text
 
     @staticmethod
-    def _default_alias_map() -> Dict[str, str]:
+    def _default_alias_map() -> dict[str, str]:
         return {
             "三上悠亚": "三上悠亜",
             "明日花绮罗": "明日花キララ",

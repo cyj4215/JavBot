@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Dict, Optional
-
 _LANG_ZH = "zh_CN"
 _LANG_EN = "en_US"
 _LANG_JA = "ja_JP"
@@ -13,8 +11,7 @@ LANGUAGE_NAMES = {
     _LANG_JA: "日本語",
 }
 
-_TRANSLATIONS: Dict[str, Dict[str, str]] = {
-
+_TRANSLATIONS: dict[str, dict[str, str]] = {
     # ── Bot info ──
     "bot_welcome": {
         _LANG_ZH: "🎉 欢迎使用！\n\n快速上手：\n🔍 发送女优名字 → 查看个人资料\n🧲 发送番号 (SSIS-123) → 搜索磁力\n⭐ 收藏女优 → 随时查看最新作品\n\n以下是主要功能入口：",
@@ -36,7 +33,6 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "⏰ Query time: {}",
         _LANG_JA: "⏰ 検索時刻：{}",
     },
-
     # ── Menu buttons ──
     "menu_search_actress": {
         _LANG_ZH: "🔍 搜索女优",
@@ -73,7 +69,6 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "Back to Favorites",
         _LANG_JA: "お気に入りに戻る",
     },
-
     # ── Auth ──
     "no_permission": {
         _LANG_ZH: "无权限使用此机器人。",
@@ -85,7 +80,6 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "No permission",
         _LANG_JA: "権限がありません",
     },
-
     # ── Search ──
     "search_actress": {
         _LANG_ZH: "🔍 请发送女优名字进行查询，例如：\n三上悠亚\n明日花キララ\nYua Mikami",
@@ -137,7 +131,6 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "🧲 Search {} magnets",
         _LANG_JA: "🧲 {} をマグネット検索",
     },
-
     # ── Profile ──
     "profile_title": {
         _LANG_ZH: "👩 女优信息",
@@ -194,7 +187,7 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "• 🌐 Social: ",
         _LANG_JA: "• 🌐 SNS：",
     },
-        "profile_favorite": {
+    "profile_favorite": {
         _LANG_ZH: "☆ 收藏",
         _LANG_EN: "☆ Favorite",
         _LANG_JA: "☆ お気に入り",
@@ -209,7 +202,7 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "📰 Latest Works",
         _LANG_JA: "📰 最新作品",
     },
-        "works_empty": {
+    "works_empty": {
         _LANG_ZH: "暂未获取到作品信息。",
         _LANG_EN: "No works found.",
         _LANG_JA: "作品情報が見つかりません。",
@@ -219,7 +212,6 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "Page {}/{}",
         _LANG_JA: "{}/{} ページ",
     },
-
     # ── Magnet ──
     "magnet_result": {
         _LANG_ZH: "💾 磁力搜索",
@@ -261,7 +253,6 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "Copy",
         _LANG_JA: "コピー",
     },
-
     # ── Rank ──
     "rank_title": {
         _LANG_ZH: "🏆 热门女优排行榜",
@@ -394,7 +385,6 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "Actress not found: {}",
         _LANG_JA: "女優が見つかりません: {}",
     },
-
     # ── Favorites page ──
     "fav_page_prev": {
         _LANG_ZH: "◀️ 上一页",
@@ -442,14 +432,12 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "Page {}/{}",
         _LANG_JA: "{}/{} ページ",
     },
-
     # ── Work display ──
     "work_date_unknown": {
         _LANG_ZH: "未知",
         _LANG_EN: "Unknown",
         _LANG_JA: "不明",
     },
-
     # ── History ──
     "history_title": {
         _LANG_ZH: "📜 最近搜索",
@@ -494,7 +482,7 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         _LANG_EN: "Operation failed, please try again later.",
         _LANG_JA: "操作に失敗しました。後でもう一度お試しください。",
     },
-    }
+}
 
 
 class I18nService:
@@ -505,7 +493,7 @@ class I18nService:
     def __init__(self, default_lang: str = _LANG_ZH):
         self._default_lang = default_lang if default_lang in SUPPORTED_LANGUAGES else _LANG_ZH
 
-    def t(self, key: str, lang: Optional[str] = None, *args) -> str:
+    def t(self, key: str, lang: str | None = None, *args) -> str:
         """Translate a key to the given language, with optional positional format args.
 
         Fallback chain: requested lang → default lang → key itself.
@@ -526,7 +514,7 @@ class I18nService:
 
         return text
 
-    def supported_languages(self) -> Dict[str, str]:
+    def supported_languages(self) -> dict[str, str]:
         return dict(LANGUAGE_NAMES)
 
     def is_supported(self, lang: str) -> bool:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import html
 import logging
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
@@ -22,10 +22,10 @@ _MAX_HISTORY = 50
 
 
 def _render_history_page(
-    queries: List[dict],
+    queries: list[dict],
     page: int,
     total: int,
-) -> Tuple[str, InlineKeyboardMarkup]:
+) -> tuple[str, InlineKeyboardMarkup]:
     total_pages = max(1, (total + _HISTORY_PER_PAGE - 1) // _HISTORY_PER_PAGE)
     page = max(1, min(page, total_pages))
 
@@ -54,9 +54,9 @@ def _render_history_page(
     for q in page_queries:
         name = q["actress_name"]
         btn_label = name[:14] + "…" if len(name) > 14 else name
-        keyboard.append([
-            InlineKeyboardButton(f"🔍 {btn_label}", callback_data=_short_callback("search", name))
-        ])
+        keyboard.append(
+            [InlineKeyboardButton(f"🔍 {btn_label}", callback_data=_short_callback("search", name))]
+        )
 
     nav_row = []
     if page > 1:
@@ -72,7 +72,9 @@ def _render_history_page(
 
 
 @require_auth
-async def history_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg: Message, shared) -> None:
+async def history_cmd(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, msg: Message, shared
+) -> None:
     user = update.effective_user
     page = 1
     if context.args and context.args[0].lstrip("-").isdigit():
@@ -82,10 +84,7 @@ async def history_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg: M
     queries = await fav_mgr.get_recent_favorite_queries(user.id, limit=_MAX_HISTORY)
 
     if not queries:
-        await msg.reply_text(
-            "📜 暂无搜索历史。\n\n"
-            "使用 /s 名字 查询女优信息，搜索记录会自动保存。"
-        )
+        await msg.reply_text("📜 暂无搜索历史。\n\n使用 /s 名字 查询女优信息，搜索记录会自动保存。")
         return
 
     text, markup = _render_history_page(queries, page, len(queries))

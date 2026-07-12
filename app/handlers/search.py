@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import html
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
@@ -14,13 +14,16 @@ if TYPE_CHECKING:
 
 from ..fav_manager import get_favorites_manager
 from ..formatters import format_profile, looks_like_av_id
-from ..secure_callback import short_callback as _short_callback, resolve_callback as _resolve_callback
+from ..secure_callback import resolve_callback as _resolve_callback
+from ..secure_callback import short_callback as _short_callback
 from .common import make_t, require_auth, require_auth_callback
 
-_pending_queries: Dict[int, asyncio.Task] = {}
+_pending_queries: dict[int, asyncio.Task] = {}
 
 
-async def send_works_media_group(msg: Message, works: List[Dict[str, Any]], _t, proxy_addr: str = "") -> None:
+async def send_works_media_group(
+    msg: Message, works: list[dict[str, Any]], _t, proxy_addr: str = ""
+) -> None:
     """Send each work as separate photo with magnet button. Download covers via curl."""
     from ..improved_utils import download_image_via_curl
 
@@ -39,10 +42,16 @@ async def send_works_media_group(msg: Message, works: List[Dict[str, Any]], _t, 
         if title:
             caption_parts.append(f"📝 {html.escape(title)}")
 
-        button = InlineKeyboardMarkup([[InlineKeyboardButton(
-            _t("search_magnet_for", av_id),
-            callback_data=_short_callback("magnet", av_id),
-        )]])
+        button = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        _t("search_magnet_for", av_id),
+                        callback_data=_short_callback("magnet", av_id),
+                    )
+                ]
+            ]
+        )
 
         try:
             img_bytes = await asyncio.to_thread(download_image_via_curl, img_url, proxy_addr)
@@ -64,9 +73,12 @@ async def send_works_media_group(msg: Message, works: List[Dict[str, Any]], _t, 
             logger.warning("发送作品图片失败: %s", exc, exc_info=True)
 
 
-async def run_search_reply(msg: Message, query: str, user_id: Optional[int] = None, back_data: Optional[str] = None, shared=None) -> None:
+async def run_search_reply(
+    msg: Message, query: str, user_id: int | None = None, back_data: str | None = None, shared=None
+) -> None:
     if shared is None:
         from . import _get_shared
+
         shared = _get_shared()
     lang = shared.service.i18n.DEFAULT_LANG
     if user_id:
@@ -82,7 +94,9 @@ async def run_search_reply(msg: Message, query: str, user_id: Optional[int] = No
     cancel_kb = None
     if user_id:
         cancel_data = _short_callback("cancel", str(user_id))
-        cancel_kb = InlineKeyboardMarkup([[InlineKeyboardButton("⏹ 取消", callback_data=cancel_data)]])
+        cancel_kb = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("⏹ 取消", callback_data=cancel_data)]]
+        )
         task = asyncio.current_task()
         if task:
             _pending_queries[user_id] = task
@@ -94,7 +108,9 @@ async def run_search_reply(msg: Message, query: str, user_id: Optional[int] = No
         is_fav = False
         if profile.found and profile.star_name is not None and user_id is not None:
             is_fav = await fav_mgr.is_favorite(user_id, profile.star_name)
-        base_text, keyboard = format_profile(profile, user_id, is_favorite=is_fav, _t=_, back_data=back_data)
+        base_text, keyboard = format_profile(
+            profile, user_id, is_favorite=is_fav, _t=_, back_data=back_data
+        )
 
         await fav_mgr.increment_stat("total_searches")
         if profile.found:
@@ -106,8 +122,13 @@ async def run_search_reply(msg: Message, query: str, user_id: Optional[int] = No
         if avatar_url and len(base_text) < 950:
             try:
                 from ..improved_utils import download_image_via_curl
-                proxy_addr = shared.config.proxy_addr if hasattr(shared.config, 'proxy_addr') else ""
-                avatar_bytes = await asyncio.to_thread(download_image_via_curl, avatar_url, proxy_addr)
+
+                proxy_addr = (
+                    shared.config.proxy_addr if hasattr(shared.config, "proxy_addr") else ""
+                )
+                avatar_bytes = await asyncio.to_thread(
+                    download_image_via_curl, avatar_url, proxy_addr
+                )
                 if avatar_bytes:
                     await msg.reply_photo(
                         photo=avatar_bytes,
@@ -138,7 +159,12 @@ async def run_search_reply(msg: Message, query: str, user_id: Optional[int] = No
             )
 
         if profile.found and profile.latest_works and shared.config.send_latest_covers:
-            await send_works_media_group(msg, profile.latest_works[:shared.config.latest_cover_limit], _, proxy_addr=shared.config.proxy_addr)
+            await send_works_media_group(
+                msg,
+                profile.latest_works[: shared.config.latest_cover_limit],
+                _,
+                proxy_addr=shared.config.proxy_addr,
+            )
     except asyncio.CancelledError:
         try:
             await waiting.edit_text("⏹ " + _("search_cancelled"))
@@ -154,14 +180,16 @@ async def run_search_reply(msg: Message, query: str, user_id: Optional[int] = No
 
 
 @require_auth
-async def search_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg: Message, shared) -> None:
-    args: List[str] = context.args if context.args else []
+async def search_cmd(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, msg: Message, shared
+) -> None:
+    args: list[str] = context.args if context.args else []
     query: str = " ".join(args).strip()
     if not query:
         _ = await make_t(shared, update)
         await msg.reply_text(_("search_usage"))
         return
-    user: Optional[Any] = update.effective_user
+    user: Any | None = update.effective_user
     await run_search_reply(msg, query, user.id if user else None, shared=shared)
 
 
@@ -180,12 +208,14 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE, msg: Messa
         await run_magnet_reply(msg, query, shared=shared)
         return
 
-    user: Optional[Any] = update.effective_user
+    user: Any | None = update.effective_user
     await run_search_reply(msg, query, user.id if user else None, shared=shared)
 
 
 @require_auth_callback
-async def cancel_search_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared) -> None:
+async def cancel_search_callback(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared
+) -> None:
     data = q.data or ""
     uid_str = _resolve_callback("cancel", data)
     if uid_str is None:

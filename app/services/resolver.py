@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from jvav import JavBusUtil
+
     from ..rate_limiter import RateLimiter
     from .name_match_service import NameMatchService
     from .wiki_service import WikiService
@@ -25,7 +25,7 @@ class ProfileResolver:
         self.javbus = javbus
         self._javbus_limiter = javbus_limiter
 
-    def resolve(self, name: str) -> Tuple[Optional[str], Optional[Dict], List[str]]:
+    def resolve(self, name: str) -> tuple[str | None, dict | None, list[str]]:
         """Resolve a query string to an actress.
 
         Returns (matched_name, star_dict, suggestions).

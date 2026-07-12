@@ -20,11 +20,12 @@ import re
 import secrets
 import threading
 import time
-from typing import Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CALLBACK_DB_PATH = os.environ.get("CALLBACK_DB_PATH", os.path.join(os.getcwd(), "data", "callbacks.json"))
+DEFAULT_CALLBACK_DB_PATH = os.environ.get(
+    "CALLBACK_DB_PATH", os.path.join(os.getcwd(), "data", "callbacks.json")
+)
 
 
 class SecureCallbackStore:
@@ -45,11 +46,13 @@ class SecureCallbackStore:
     KEY_LENGTH = 8
     SAVE_INTERVAL = 30
 
-    def __init__(self, ttl: int = DEFAULT_TTL, storage_path: str = DEFAULT_CALLBACK_DB_PATH) -> None:
+    def __init__(
+        self, ttl: int = DEFAULT_TTL, storage_path: str = DEFAULT_CALLBACK_DB_PATH
+    ) -> None:
         self._ttl = ttl
         self._storage_path = storage_path
         self._secret: bytes = secrets.token_bytes(32)
-        self._store: Dict[Tuple[str, str], Tuple[str, float]] = {}
+        self._store: dict[tuple[str, str], tuple[str, float]] = {}
         self._lock = threading.RLock()
         self._last_cleanup = time.time()
         self._dirty = False
@@ -60,9 +63,9 @@ class SecureCallbackStore:
         return secrets.token_hex(self.KEY_LENGTH // 2)
 
     def _compute_signature(self, prefix: str, key: str, data: str) -> str:
-        message = f"{prefix}:{key}:{data}".encode('utf-8')
+        message = f"{prefix}:{key}:{data}".encode()
         signature = hmac.new(self._secret, message, hashlib.sha256).hexdigest()
-        return signature[:self.SIGNATURE_LENGTH]
+        return signature[: self.SIGNATURE_LENGTH]
 
     def _verify_signature(self, prefix: str, key: str, data: str, signature: str) -> bool:
         expected = self._compute_signature(prefix, key, data)
@@ -77,13 +80,13 @@ class SecureCallbackStore:
             return
 
         try:
-            with open(self._storage_path, 'r', encoding='utf-8') as f:
+            with open(self._storage_path, encoding="utf-8") as f:
                 data = json.load(f)
 
-            callbacks = data.get('callbacks', {})
+            callbacks = data.get("callbacks", {})
             for key_str, value in callbacks.items():
-                prefix, key = key_str.split(':', 1)
-                self._store[(prefix, key)] = (value['data'], value['timestamp'])
+                prefix, key = key_str.split(":", 1)
+                self._store[(prefix, key)] = (value["data"], value["timestamp"])
 
             logger.info(f"Loaded {len(self._store)} callbacks from {self._storage_path}")
         except Exception as e:
@@ -93,12 +96,12 @@ class SecureCallbackStore:
         try:
             os.makedirs(os.path.dirname(self._storage_path), exist_ok=True)
             data = {
-                'callbacks': {
-                    f"{prefix}:{key}": {'data': value[0], 'timestamp': value[1]}
+                "callbacks": {
+                    f"{prefix}:{key}": {"data": value[0], "timestamp": value[1]}
                     for (prefix, key), value in self._store.items()
                 }
             }
-            with open(self._storage_path, 'w', encoding='utf-8') as f:
+            with open(self._storage_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False)
             self._dirty = False
             self._last_save = time.time()
@@ -116,8 +119,7 @@ class SecureCallbackStore:
 
         with self._lock:
             expired_keys = [
-                key for key, (_, timestamp) in self._store.items()
-                if self._is_expired(timestamp)
+                key for key, (_, timestamp) in self._store.items() if self._is_expired(timestamp)
             ]
             for key in expired_keys:
                 del self._store[key]
@@ -147,14 +149,14 @@ class SecureCallbackStore:
         logger.debug(f"Created callback token: {prefix}:... (data length: {len(data)})")
         return callback_token
 
-    def resolve(self, prefix: str, token: str) -> Optional[str]:
+    def resolve(self, prefix: str, token: str) -> str | None:
         self._cleanup_expired()
 
         if self._is_legacy_format(token):
             logger.warning(f"Rejected legacy MD5 format callback: {prefix}:...")
             return None
 
-        parts = token.split(':')
+        parts = token.split(":")
         if len(parts) != 4:
             logger.warning(f"Invalid callback token format: {prefix}:...")
             return None
@@ -197,7 +199,7 @@ class SecureCallbackStore:
         return data
 
     def _is_legacy_format(self, token: str) -> bool:
-        parts = token.split(':')
+        parts = token.split(":")
         if len(parts) != 2:
             return False
 
@@ -205,7 +207,7 @@ class SecureCallbackStore:
         if len(key) != 8:
             return False
 
-        if not re.match(r'^[0-9a-f]{8}$', key, re.IGNORECASE):
+        if not re.match(r"^[0-9a-f]{8}$", key, re.IGNORECASE):
             return False
 
         return True
@@ -214,8 +216,7 @@ class SecureCallbackStore:
         with self._lock:
             total = len(self._store)
             expired = sum(
-                1 for _, (_, timestamp) in self._store.items()
-                if self._is_expired(timestamp)
+                1 for _, (_, timestamp) in self._store.items() if self._is_expired(timestamp)
             )
 
         return {
@@ -241,7 +242,7 @@ class SecureCallbackStore:
             self._save_to_file()
 
 
-_callback_store: Optional[SecureCallbackStore] = None
+_callback_store: SecureCallbackStore | None = None
 _store_lock = threading.Lock()
 
 
@@ -259,5 +260,5 @@ def short_callback(prefix: str, data: str) -> str:
     return get_callback_store().create(prefix, data)
 
 
-def resolve_callback(prefix: str, token: str) -> Optional[str]:
+def resolve_callback(prefix: str, token: str) -> str | None:
     return get_callback_store().resolve(prefix, token)

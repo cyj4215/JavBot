@@ -4,7 +4,7 @@ import asyncio
 import html
 import logging
 import re
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
@@ -12,7 +12,8 @@ from telegram.ext import ContextTypes
 
 from ..fav_manager import get_favorites_manager
 from ..formatters import _SORT_LABELS, render_favorites_page
-from ..secure_callback import short_callback as _short_callback, resolve_callback as _resolve_callback
+from ..secure_callback import resolve_callback as _resolve_callback
+from ..secure_callback import short_callback as _short_callback
 from .common import make_t, require_auth, require_auth_callback
 
 if TYPE_CHECKING:
@@ -29,8 +30,8 @@ def _fuzzy_match(input_name: str, fav_name: str) -> bool:
     return False
 
 
-def _parse_actress_names(query: str) -> List[str]:
-    names = re.split(r'[,;，；]+', query)
+def _parse_actress_names(query: str) -> list[str]:
+    names = re.split(r"[,;，；]+", query)
     actress_names = []
     for name in names:
         name = name.strip()
@@ -43,7 +44,7 @@ async def _get_user_favorites(user_id: int):
     """Get favorites for a user. Returns the list or None (with empty favorites message logic)."""
     favorites_manager = await get_favorites_manager()
     result = await favorites_manager.get_favorites(user_id, limit=200)
-    favorites = result.get('items', []) if isinstance(result, dict) else result
+    favorites = result.get("items", []) if isinstance(result, dict) else result
     if not favorites:
         return None
     return favorites
@@ -52,28 +53,38 @@ async def _get_user_favorites(user_id: int):
 async def _update_favorite_keyboard(q, is_favorited: bool, actress_name: str) -> None:
     """Create and apply the keyboard update for favorite/unfavorite toggle."""
     if is_favorited:
-        new_keyboard = InlineKeyboardMarkup([
+        new_keyboard = InlineKeyboardMarkup(
             [
-                InlineKeyboardButton("⭐ 已收藏", callback_data=_short_callback("unfavnow", actress_name)),
-                InlineKeyboardButton("📰 查看最新作品", callback_data=_short_callback("works", actress_name))
+                [
+                    InlineKeyboardButton(
+                        "⭐ 已收藏", callback_data=_short_callback("unfavnow", actress_name)
+                    ),
+                    InlineKeyboardButton(
+                        "📰 查看最新作品", callback_data=_short_callback("works", actress_name)
+                    ),
+                ]
             ]
-        ])
+        )
     else:
-        new_keyboard = InlineKeyboardMarkup([
+        new_keyboard = InlineKeyboardMarkup(
             [
-                InlineKeyboardButton("☆ 收藏", callback_data=_short_callback("favnow", actress_name)),
-                InlineKeyboardButton("📰 查看最新作品", callback_data=_short_callback("works", actress_name))
+                [
+                    InlineKeyboardButton(
+                        "☆ 收藏", callback_data=_short_callback("favnow", actress_name)
+                    ),
+                    InlineKeyboardButton(
+                        "📰 查看最新作品", callback_data=_short_callback("works", actress_name)
+                    ),
+                ]
             ]
-        ])
+        )
     try:
         if q.message.caption:
             await q.edit_message_caption(reply_markup=new_keyboard)
         else:
             await q.edit_message_reply_markup(reply_markup=new_keyboard)
     except Exception:
-        logging.getLogger(__name__).debug(
-            "更新收藏按钮失败", exc_info=True
-        )
+        logging.getLogger(__name__).debug("更新收藏按钮失败", exc_info=True)
 
 
 @require_auth
@@ -102,7 +113,7 @@ async def favorite_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, 
         user_id=user.id,
         username=user.username,
         first_name=user.first_name,
-        last_name=user.last_name
+        last_name=user.last_name,
     )
 
     results = []
@@ -114,12 +125,12 @@ async def favorite_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, 
                 results.append(_("fav_found", actress_name))
                 continue
 
-            actress_data = {'extra_info': profile.extra_info} if profile.extra_info else None
+            actress_data = {"extra_info": profile.extra_info} if profile.extra_info else None
             success = await favorites_manager.add_favorite(
                 user_id=user.id,
                 actress_name=profile.star_name,
                 actress_id=profile.star_id,
-                actress_data=actress_data
+                actress_data=actress_data,
             )
 
             if success:
@@ -130,6 +141,7 @@ async def favorite_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, 
 
     except Exception as exc:
         from .common import log_handler_error
+
         log_handler_error(exc, "favorite add failed")
         results.append(_("error_generic"))
 
@@ -164,11 +176,11 @@ async def unfavorite_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg
         for actress_name in actress_names:
             if not await favorites_manager.is_favorite(user.id, actress_name):
                 result = await favorites_manager.get_favorites(user.id, limit=100)
-                fav_list = result.get('items', []) if isinstance(result, dict) else result
+                fav_list = result.get("items", []) if isinstance(result, dict) else result
                 matched = None
                 for fav in fav_list:
-                    if _fuzzy_match(actress_name, fav['actress_name']):
-                        matched = fav['actress_name']
+                    if _fuzzy_match(actress_name, fav["actress_name"]):
+                        matched = fav["actress_name"]
                         break
 
                 if matched:
@@ -187,6 +199,7 @@ async def unfavorite_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg
 
     except Exception as exc:
         from .common import log_handler_error
+
         log_handler_error(exc, "favorite remove failed")
         results.append(_("error_generic"))
 
@@ -194,7 +207,9 @@ async def unfavorite_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg
 
 
 @require_auth
-async def my_favorites_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared, page: int = 1) -> None:
+async def my_favorites_cmd(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared, page: int = 1
+) -> None:
     user = update.effective_user
     _ = await make_t(shared, update)
 
@@ -212,18 +227,19 @@ async def my_favorites_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, m
         return
 
     last_query_map = await fav_mgr.get_last_query_time_map(user.id)
-    text, reply_markup = render_favorites_page(favorites, page, favorites_per_page, sort=sort, last_query_map=last_query_map, _t=_)
+    text, reply_markup = render_favorites_page(
+        favorites, page, favorites_per_page, sort=sort, last_query_map=last_query_map, _t=_
+    )
 
     await msg.reply_text(
-        text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=reply_markup,
-        disable_web_page_preview=True
+        text, parse_mode=ParseMode.HTML, reply_markup=reply_markup, disable_web_page_preview=True
     )
 
 
 @require_auth
-async def favorites_latest_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared) -> None:
+async def favorites_latest_cmd(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared
+) -> None:
     user = update.effective_user
     _ = await make_t(shared, update)
 
@@ -235,18 +251,19 @@ async def favorites_latest_cmd(update: Update, context: ContextTypes.DEFAULT_TYP
     waiting = await msg.reply_text(f"正在查询 {len(favorites)} 位收藏女优的最新作品...")
 
     try:
+
         async def query_actress_latest(fav):
             works = []
             try:
-                profile = await shared.service.query_profile_async(fav['actress_name'])
+                profile = await shared.service.query_profile_async(fav["actress_name"])
                 if profile.found and profile.latest_works:
                     for work in profile.latest_works[:2]:
                         work_copy = dict(work)
-                        work_copy['actress_name'] = fav['actress_name']
+                        work_copy["actress_name"] = fav["actress_name"]
                         works.append(work_copy)
             except Exception:
                 logging.getLogger(__name__).warning(
-                    "查询收藏女优最新作品失败: %s", fav.get('actress_name'), exc_info=True
+                    "查询收藏女优最新作品失败: %s", fav.get("actress_name"), exc_info=True
                 )
             return works
 
@@ -257,7 +274,7 @@ async def favorites_latest_cmd(update: Update, context: ContextTypes.DEFAULT_TYP
         for works in results_list:
             all_latest_works.extend(works)
 
-        all_latest_works.sort(key=lambda x: x.get('date', ''), reverse=True)
+        all_latest_works.sort(key=lambda x: x.get("date", ""), reverse=True)
 
         if not all_latest_works:
             await waiting.edit_text("暂无最新作品信息。")
@@ -267,15 +284,15 @@ async def favorites_latest_cmd(update: Update, context: ContextTypes.DEFAULT_TYP
 
         batch_size = 5
         for i in range(0, len(all_latest_works), batch_size):
-            batch = all_latest_works[i:i + batch_size]
+            batch = all_latest_works[i : i + batch_size]
 
             lines = ["<b>🎬 收藏女优最新作品</b>", ""]
 
             for work in batch:
-                actress_name = html.escape(work.get('actress_name', '未知'))
-                av_id = html.escape(work.get('id', '未知'))
-                av_date = html.escape(work.get('date', '未知日期'))
-                av_title = html.escape(work.get('title', '')[:40])
+                actress_name = html.escape(work.get("actress_name", "未知"))
+                av_id = html.escape(work.get("id", "未知"))
+                av_date = html.escape(work.get("date", "未知日期"))
+                av_title = html.escape(work.get("title", "")[:40])
 
                 lines.append(f"<b>👩 {actress_name}</b>")
                 lines.append(f"🎬 <code>{av_id}</code>")
@@ -289,13 +306,12 @@ async def favorites_latest_cmd(update: Update, context: ContextTypes.DEFAULT_TYP
                 lines.append(f"...还有 {len(all_latest_works) - i - batch_size} 部作品")
 
             await msg.reply_text(
-                "\n".join(lines),
-                parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True
+                "\n".join(lines), parse_mode=ParseMode.HTML, disable_web_page_preview=True
             )
 
     except Exception as exc:
         from .common import log_handler_error
+
         log_handler_error(exc, "favorites latest works query failed")
         try:
             await waiting.edit_text("查询失败，请稍后再试。")
@@ -319,9 +335,11 @@ async def callback_favquery(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     await fav_mgr.record_favorite_query(update.effective_user.id, actress_name)
     await q.answer(f"正在查询 {actress_name}...")
     await run_search_reply(
-        q.message, actress_name,
+        q.message,
+        actress_name,
         update.effective_user.id if update.effective_user else None,
-        back_data="myfav:page:1:date", shared=shared,
+        back_data="myfav:page:1:date",
+        shared=shared,
     )
 
 
@@ -343,9 +361,15 @@ async def callback_favnow(update: Update, context: ContextTypes.DEFAULT_TYPE, q,
             return
         actress_data = {"extra_info": profile.extra_info} if profile.extra_info else None
         user = update.effective_user
-        await fav_mgr.sync_user(user_id=user.id, username=user.username,
-                                first_name=user.first_name, last_name=user.last_name)
-        success = await fav_mgr.add_favorite(user.id, profile.star_name, profile.star_id, actress_data)
+        await fav_mgr.sync_user(
+            user_id=user.id,
+            username=user.username,
+            first_name=user.first_name,
+            last_name=user.last_name,
+        )
+        success = await fav_mgr.add_favorite(
+            user.id, profile.star_name, profile.star_id, actress_data
+        )
         if success:
             await q.answer(f"✅ 已收藏: {profile.star_name}")
             await _update_favorite_keyboard(q, True, profile.star_name)
@@ -353,6 +377,7 @@ async def callback_favnow(update: Update, context: ContextTypes.DEFAULT_TYPE, q,
             await q.answer("收藏失败", show_alert=True)
     except Exception as exc:
         from .common import log_handler_error
+
         log_handler_error(exc, "favorite favnow failed")
         await q.answer("收藏失败", show_alert=True)
 
@@ -368,7 +393,9 @@ async def callback_unfavnow(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         return
 
     try:
-        success = await (await get_favorites_manager()).remove_favorite(update.effective_user.id, actress_name)
+        success = await (await get_favorites_manager()).remove_favorite(
+            update.effective_user.id, actress_name
+        )
         if success:
             await q.answer(f"✅ 已取消收藏: {actress_name}")
             await _update_favorite_keyboard(q, False, actress_name)
@@ -376,6 +403,7 @@ async def callback_unfavnow(update: Update, context: ContextTypes.DEFAULT_TYPE, 
             await q.answer("取消收藏失败", show_alert=True)
     except Exception as exc:
         from .common import log_handler_error
+
         log_handler_error(exc, "favorite unfavnow failed")
         await q.answer("取消收藏失败", show_alert=True)
 
@@ -384,21 +412,38 @@ async def _edit_or_send(q, text, reply_markup=None):
     """Edit message text if possible, otherwise send new message (handles photo→text transition)."""
     try:
         if q.message.photo:
-            await q.message.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=reply_markup, disable_web_page_preview=True)
+            await q.message.reply_text(
+                text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=reply_markup,
+                disable_web_page_preview=True,
+            )
         else:
-            await q.edit_message_text(text, parse_mode=ParseMode.HTML, reply_markup=reply_markup, disable_web_page_preview=True)
+            await q.edit_message_text(
+                text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=reply_markup,
+                disable_web_page_preview=True,
+            )
     except Exception:
         try:
-            await q.message.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=reply_markup, disable_web_page_preview=True)
+            await q.message.reply_text(
+                text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=reply_markup,
+                disable_web_page_preview=True,
+            )
         except Exception:
             pass
 
 
 @require_auth_callback
-async def callback_myfav_page(update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared) -> None:
+async def callback_myfav_page(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared
+) -> None:
     """Handle myfav:page: callback — paginate favorites list."""
     data = q.data or ""
-    parts = data[len("myfav:page:"):].split(":", 1)
+    parts = data[len("myfav:page:") :].split(":", 1)
     page = int(parts[0])
     sort = parts[1] if len(parts) > 1 else "date"
     await q.answer()
@@ -412,19 +457,27 @@ async def callback_myfav_page(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     _ = await make_t(shared, update)
     last_query_map = await fav_mgr.get_last_query_time_map(update.effective_user.id)
-    text, reply_markup = render_favorites_page(favorites, page, 6, sort=sort, last_query_map=last_query_map, _t=_)
+    text, reply_markup = render_favorites_page(
+        favorites, page, 6, sort=sort, last_query_map=last_query_map, _t=_
+    )
     await _edit_or_send(q, text, reply_markup)
 
 
 @require_auth_callback
-async def callback_myfav_sort(update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared) -> None:
+async def callback_myfav_sort(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared
+) -> None:
     """Handle myfav:sort: callback — cycle sort order in favorites list."""
     data = q.data or ""
-    parts = data[len("myfav:sort:"):].split(":", 1)
+    parts = data[len("myfav:sort:") :].split(":", 1)
     current_sort = parts[0]
     page = int(parts[1]) if len(parts) > 1 else 1
     sort_order = ["date", "name", "recent"]
-    next_sort = sort_order[(sort_order.index(current_sort) + 1) % len(sort_order)] if current_sort in sort_order else "date"
+    next_sort = (
+        sort_order[(sort_order.index(current_sort) + 1) % len(sort_order)]
+        if current_sort in sort_order
+        else "date"
+    )
 
     _ = await make_t(shared, update)
     fav_mgr = await get_favorites_manager()
@@ -435,12 +488,16 @@ async def callback_myfav_sort(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     await q.answer(_("sort_changed", _SORT_LABELS.get(next_sort, next_sort)))
     last_query_map = await fav_mgr.get_last_query_time_map(update.effective_user.id)
-    text, reply_markup = render_favorites_page(favorites, page, 6, sort=next_sort, last_query_map=last_query_map, _t=_)
+    text, reply_markup = render_favorites_page(
+        favorites, page, 6, sort=next_sort, last_query_map=last_query_map, _t=_
+    )
     await _edit_or_send(q, text, reply_markup)
 
 
 @require_auth
-async def export_favorites_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared) -> None:
+async def export_favorites_cmd(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared
+) -> None:
     user = update.effective_user
     _ = await make_t(shared, update)
     fav_mgr = await get_favorites_manager()
@@ -450,6 +507,7 @@ async def export_favorites_cmd(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     import io
+
     file = io.BytesIO(data.encode("utf-8"))
     file.name = f"favorites_{user.id}.json"
     await msg.reply_document(

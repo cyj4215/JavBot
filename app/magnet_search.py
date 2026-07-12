@@ -1,7 +1,6 @@
 import logging
 import os
 import threading
-from typing import Dict, List, Optional
 
 import requests
 from bs4 import BeautifulSoup
@@ -17,7 +16,7 @@ DEFAULT_CACHE_SIZE = 512
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
 _cache = TTLCache(max_size=DEFAULT_CACHE_SIZE, default_ttl=DEFAULT_CACHE_TTL)
-_session: Optional[requests.Session] = None
+_session: requests.Session | None = None
 _session_lock = threading.Lock()
 
 
@@ -32,7 +31,7 @@ def _get_session() -> requests.Session:
     return _session
 
 
-def _do_search(q: str, limit: int, timeout: int) -> List[Dict[str, str]]:
+def _do_search(q: str, limit: int, timeout: int) -> list[dict[str, str]]:
     """Internal: search sukebei.nyaa.si for query, return parsed results."""
     try:
         resp = _get_session().get(
@@ -50,7 +49,7 @@ def _do_search(q: str, limit: int, timeout: int) -> List[Dict[str, str]]:
         rows = soup.select("table.torrent-list tbody tr")
         if not rows:
             rows = soup.select("tbody tr")
-        results: List[Dict[str, str]] = []
+        results: list[dict[str, str]] = []
         for row in rows:
             title_tag = row.select_one("td:nth-of-type(2) a:not(.comments)")
             magnet_tag = row.select_one('a[href^="magnet:"]')
@@ -73,7 +72,7 @@ def _do_search(q: str, limit: int, timeout: int) -> List[Dict[str, str]]:
         return []
 
 
-def _search_variations(q: str, limit: int, timeout: int) -> List[Dict[str, str]]:
+def _search_variations(q: str, limit: int, timeout: int) -> list[dict[str, str]]:
     """Search with fallback variations when exact query returns no results."""
     results = _do_search(q, limit, timeout)
     if results:
@@ -106,7 +105,9 @@ def _search_variations(q: str, limit: int, timeout: int) -> List[Dict[str, str]]
     return []
 
 
-def search_magnets(query: str, limit: int = DEFAULT_LIMIT, timeout: int = DEFAULT_TIMEOUT) -> List[Dict[str, str]]:
+def search_magnets(
+    query: str, limit: int = DEFAULT_LIMIT, timeout: int = DEFAULT_TIMEOUT
+) -> list[dict[str, str]]:
     q = (query or "").strip()
     if not q:
         return []

@@ -1,15 +1,18 @@
 """Interactive works browser — paginated work cards from profile cache."""
+
 from __future__ import annotations
 
+import asyncio
 import html
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from ..secure_callback import short_callback as _short_callback, resolve_callback as _resolve_callback
+from ..secure_callback import resolve_callback as _resolve_callback
+from ..secure_callback import short_callback as _short_callback
 from .common import require_auth_callback
 
 if TYPE_CHECKING:
@@ -17,7 +20,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_last_works_msg: Dict[int, int] = {}
+_last_works_msg: dict[int, int] = {}
 
 _MAX_WORKS_MSG_CACHE = 200
 
@@ -32,7 +35,7 @@ def _store_works_msg(user_id: int, message_id: int) -> None:
 _MAX_CAPTION = 950
 
 
-async def _get_profile_works(name: str, shared) -> List[Dict[str, Any]]:
+async def _get_profile_works(name: str, shared) -> list[dict[str, Any]]:
     """Fetch works for star from cache or re-query."""
     try:
         profile = await shared.service.query_profile_async(name)
@@ -44,7 +47,7 @@ async def _get_profile_works(name: str, shared) -> List[Dict[str, Any]]:
 
 
 def _build_works_page(
-    works: List[Dict[str, Any]],
+    works: list[dict[str, Any]],
     star_name: str,
     index: int,
     _t,
@@ -74,17 +77,33 @@ def _build_works_page(
     keyboard = []
     nav_row = []
     if idx > 0:
-        nav_row.append(InlineKeyboardButton("◀️", callback_data=_short_callback("works", f"{star_name}|{idx - 1}")))
+        nav_row.append(
+            InlineKeyboardButton(
+                "◀️", callback_data=_short_callback("works", f"{star_name}|{idx - 1}")
+            )
+        )
     if av_id:
-        nav_row.append(InlineKeyboardButton(_t("search_magnet_for", av_id), callback_data=_short_callback("magnet", av_id)))
+        nav_row.append(
+            InlineKeyboardButton(
+                _t("search_magnet_for", av_id), callback_data=_short_callback("magnet", av_id)
+            )
+        )
     if idx < total - 1:
-        nav_row.append(InlineKeyboardButton("▶️", callback_data=_short_callback("works", f"{star_name}|{idx + 1}")))
+        nav_row.append(
+            InlineKeyboardButton(
+                "▶️", callback_data=_short_callback("works", f"{star_name}|{idx + 1}")
+            )
+        )
     if nav_row:
         keyboard.append(nav_row)
 
-    keyboard.append([
-        InlineKeyboardButton(_t("profile_latest_works"), callback_data=_short_callback("favquery", star_name)),
-    ])
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                _t("profile_latest_works"), callback_data=_short_callback("favquery", star_name)
+            ),
+        ]
+    )
 
     caption = "\n".join(caption_parts)
     return caption, InlineKeyboardMarkup(keyboard) if keyboard else None, img_url
@@ -128,6 +147,7 @@ async def works_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, q, 
 
     if is_photo and img_url:
         from telegram import InputMediaPhoto
+
         try:
             await q.edit_message_media(
                 media=InputMediaPhoto(media=img_url, caption=caption, parse_mode=ParseMode.HTML),
@@ -146,7 +166,8 @@ async def works_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, q, 
                 pass
         try:
             from ..improved_utils import download_image_via_curl
-            proxy = shared.config.proxy_addr if hasattr(shared.config, 'proxy_addr') else ""
+
+            proxy = shared.config.proxy_addr if hasattr(shared.config, "proxy_addr") else ""
             img_bytes = await asyncio.to_thread(download_image_via_curl, img_url, proxy)
         except Exception:
             img_bytes = None

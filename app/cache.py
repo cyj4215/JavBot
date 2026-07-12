@@ -3,13 +3,15 @@ import os
 import threading
 import time
 from collections import OrderedDict
-from typing import Any, Optional
+from typing import Any
 
 
 class TTLCache:
     """Thread-safe TTL cache with optional JSON persistence."""
 
-    def __init__(self, max_size: int = 1024, default_ttl: int = 600, persist_path: Optional[str] = None):
+    def __init__(
+        self, max_size: int = 1024, default_ttl: int = 600, persist_path: str | None = None
+    ):
         self.max_size = max(64, max_size)
         self.default_ttl = max(30, default_ttl)
         self._persist_path = persist_path
@@ -79,7 +81,7 @@ class TTLCache:
             self._data.move_to_end(key)
             return value
 
-    def set(self, key, value, ttl: Optional[int] = None):
+    def set(self, key, value, ttl: int | None = None):
         expire_at = time.time() + (ttl if ttl is not None else self.default_ttl)
         with self._lock:
             if key in self._data:

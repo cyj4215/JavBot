@@ -17,7 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 @require_auth
-async def language_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg: Message, shared) -> None:
+async def language_cmd(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, msg: Message, shared
+) -> None:
     user = update.effective_user
     fav_mgr = await get_favorites_manager()
 
@@ -26,15 +28,19 @@ async def language_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg: 
         lang_name = shared.service.i18n.supported_languages().get(current_lang, current_lang)
         usage = shared.service.i18n.t("lang_usage", current_lang)
 
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("中文", callback_data="lang:zh_CN")],
-            [InlineKeyboardButton("English", callback_data="lang:en_US")],
-            [InlineKeyboardButton("日本語", callback_data="lang:ja_JP")],
-            [InlineKeyboardButton(
-                shared.service.i18n.t("menu_return", current_lang),
-                callback_data="menu:help"
-            )],
-        ])
+        keyboard = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("中文", callback_data="lang:zh_CN")],
+                [InlineKeyboardButton("English", callback_data="lang:en_US")],
+                [InlineKeyboardButton("日本語", callback_data="lang:ja_JP")],
+                [
+                    InlineKeyboardButton(
+                        shared.service.i18n.t("menu_return", current_lang),
+                        callback_data="menu:help",
+                    )
+                ],
+            ]
+        )
 
         await msg.reply_text(
             f"🌐 {shared.service.i18n.t('lang_current', current_lang, lang_name)}\n\n{usage}",

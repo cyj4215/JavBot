@@ -9,7 +9,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from ..formatters import format_magnet_messages
-from ..secure_callback import short_callback as _short_callback, resolve_callback as _resolve_callback
+from ..secure_callback import resolve_callback as _resolve_callback
 from .common import require_auth, require_auth_callback, send_photo_with_fallback
 
 if TYPE_CHECKING:
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 async def run_magnet_reply(msg: Message, query: str, shared=None) -> None:
     if shared is None:
         from . import _get_shared
+
         shared = _get_shared()
     waiting = await msg.reply_text("正在查询，请稍等...")
     timeout = shared.config.magnet_timeout
@@ -44,6 +45,7 @@ async def run_magnet_reply(msg: Message, query: str, shared=None) -> None:
         logging.getLogger(__name__).warning("磁力搜索超时: %s", exc)
 
     from ..fav_manager import get_favorites_manager
+
     try:
         fav_mgr = await get_favorites_manager()
         await fav_mgr.increment_stat("total_magnet_searches")
@@ -51,6 +53,7 @@ async def run_magnet_reply(msg: Message, query: str, shared=None) -> None:
         pass
 
     lang = shared.service.i18n.DEFAULT_LANG
+
     def _(key, *a):
         return shared.service.i18n.t(key, lang, *a)
 
@@ -66,7 +69,9 @@ async def run_magnet_reply(msg: Message, query: str, shared=None) -> None:
         except Exception:
             pass
         try:
-            await send_photo_with_fallback(msg, av_meta.get("img"), "\n".join(detail_lines), shared.config.proxy_addr)
+            await send_photo_with_fallback(
+                msg, av_meta.get("img"), "\n".join(detail_lines), shared.config.proxy_addr
+            )
         except Exception:
             logging.getLogger(__name__).warning("发送封面图片失败", exc_info=True)
     else:
@@ -79,7 +84,9 @@ async def run_magnet_reply(msg: Message, query: str, shared=None) -> None:
     messages = format_magnet_messages(query, items, _t=_)
     for text, kb in messages:
         try:
-            await msg.reply_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=kb)
+            await msg.reply_text(
+                text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=kb
+            )
         except Exception as exc:
             logging.getLogger(__name__).warning("发送磁力结果按钮失败: %s", exc)
             # Fallback: send without keyboard to avoid URL/port rejection
@@ -99,7 +106,9 @@ async def magnet_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, sh
 
 
 @require_auth_callback
-async def callback_copymagnet(update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared) -> None:
+async def callback_copymagnet(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared
+) -> None:
     """Handle copymagnet: callback — send full magnet link as text for copy."""
     data = q.data or ""
     magnet_url = _resolve_callback("copymagnet", data)

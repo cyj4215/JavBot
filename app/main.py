@@ -2,7 +2,6 @@ import logging
 from datetime import time as datetime_time
 
 from dotenv import load_dotenv
-
 from telegram import BotCommand, MenuButtonCommands
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -14,31 +13,31 @@ from telegram.ext import (
 )
 
 from .config import BotConfig
-from .service import ActressService
+from .fav_manager import get_favorites_manager
 from .handlers import _set_shared
-from .handlers.common import start, help_cmd, menu_callback, callback_search, callback_magnet
-from .handlers.search import cancel_search_callback, search_cmd, on_text
-from .handlers.magnet import magnet_cmd, callback_copymagnet
-from .handlers.rank import rank_cmd, rank_page_callback
-from .handlers.history import history_cmd, history_page_callback
-from .handlers.settings import language_cmd, language_callback
-from .handlers.stats import stats_cmd
-from .handlers.works import works_callback
+from .handlers.common import callback_magnet, callback_search, help_cmd, menu_callback, start
 from .handlers.favorites import (
-    favorite_cmd,
-    unfavorite_cmd,
-    my_favorites_cmd,
-    favorites_latest_cmd,
-    export_favorites_cmd,
-    callback_favquery,
     callback_favnow,
-    callback_unfavnow,
+    callback_favquery,
     callback_myfav_page,
     callback_myfav_sort,
+    callback_unfavnow,
+    export_favorites_cmd,
+    favorite_cmd,
+    favorites_latest_cmd,
+    my_favorites_cmd,
+    unfavorite_cmd,
 )
+from .handlers.history import history_cmd, history_page_callback
+from .handlers.magnet import callback_copymagnet, magnet_cmd
 from .handlers.push import check_and_push_new_works, push_toggle_cmd
-from .fav_manager import get_favorites_manager
+from .handlers.rank import rank_cmd, rank_page_callback
+from .handlers.search import cancel_search_callback, on_text, search_cmd
+from .handlers.settings import language_callback, language_cmd
+from .handlers.stats import stats_cmd
+from .handlers.works import works_callback
 from .scheduler import scheduled_cleanup
+from .service import ActressService
 
 load_dotenv()
 
@@ -47,6 +46,7 @@ async def post_init(application: Application) -> None:
     logging.info("开始执行post_init函数")
 
     from .handlers import _get_shared
+
     shared = _get_shared()
     config = shared.config
 
@@ -90,21 +90,21 @@ async def post_init(application: Application) -> None:
                 logging.info(f"发送启动消息到用户: {admin_user_id}")
                 await application.bot.send_message(
                     chat_id=admin_user_id,
-                    text="🚀 机器人已成功启动！\n\n" +
-                         "功能列表：\n" +
-                         "• /s 名字 - 查询女优信息\n" +
-                         "• /rank - 热门女优排行榜\n" +
-                         "• /history - 最近搜索记录\n" +
-                         "• /search 关键词 - 搜索磁力链接\n" +
-                         "• /fav 名字 - 收藏女优\n" +
-                         "• /unfav 名字 - 取消收藏\n" +
-                         "• /exportfav - 导出收藏为文件\n" +
-                         "• /myfav - 查看我的收藏\n" +
-                         "• /favlatest - 查看收藏女优最新作品\n" +
-                         "\n支持一次性添加/取消多个收藏，用逗号或分号分隔\n" +
-                         "例如：/fav 三上悠亚, 苍井空; 波多野结衣\n\n" +
-                         "点击 /start 开始使用！",
-                    parse_mode=ParseMode.HTML
+                    text="🚀 机器人已成功启动！\n\n"
+                    + "功能列表：\n"
+                    + "• /s 名字 - 查询女优信息\n"
+                    + "• /rank - 热门女优排行榜\n"
+                    + "• /history - 最近搜索记录\n"
+                    + "• /search 关键词 - 搜索磁力链接\n"
+                    + "• /fav 名字 - 收藏女优\n"
+                    + "• /unfav 名字 - 取消收藏\n"
+                    + "• /exportfav - 导出收藏为文件\n"
+                    + "• /myfav - 查看我的收藏\n"
+                    + "• /favlatest - 查看收藏女优最新作品\n"
+                    + "\n支持一次性添加/取消多个收藏，用逗号或分号分隔\n"
+                    + "例如：/fav 三上悠亚, 苍井空; 波多野结衣\n\n"
+                    + "点击 /start 开始使用！",
+                    parse_mode=ParseMode.HTML,
                 )
                 logging.info("启动消息发送成功")
             except Exception as e:
@@ -168,14 +168,9 @@ def build_app() -> Application:
     if config.push_enabled_global:
         job_queue = app.job_queue
         job_queue.run_repeating(
-            check_and_push_new_works,
-            interval=config.push_check_interval,
-            first=10
+            check_and_push_new_works, interval=config.push_check_interval, first=10
         )
-        job_queue.run_daily(
-            scheduled_cleanup,
-            time=datetime_time(hour=3, minute=0)
-        )
+        job_queue.run_daily(scheduled_cleanup, time=datetime_time(hour=3, minute=0))
         logging.info("已启用新作品推送检查，间隔: %s秒", config.push_check_interval)
 
     return app
