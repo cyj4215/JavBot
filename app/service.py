@@ -9,7 +9,7 @@ from jvav import JavBusUtil
 
 from .cache import TTLCache
 from .http_utils import build_retry_session
-from .models import ActressProfile
+from .models import ActressProfile, WikiExtra
 from .rate_limiter import RateLimiter
 from .services import JavBusService, NameMatchService, ProfileResolver, WikiService
 from .services.i18n_service import I18nService
@@ -150,7 +150,7 @@ class ActressService:
                 return self._javbus_svc.build_latest_works(ids[: self.latest_limit])
             return []
 
-        def load_wiki_extra() -> tuple[dict[str, Any], dict[str, Any]]:
+        def load_wiki_extra() -> tuple[dict[str, Any], WikiExtra]:
             wiki_page = self._wiki_svc.wiki_page_by_lang(star_name, from_lang="ja", to_lang="zh")
             extra_info = self._wiki_svc.get_star_extra_info(wiki_page.get("url", ""))
             return wiki_page, extra_info
@@ -185,7 +185,7 @@ class ActressService:
             avatar_url = avatar_result.get("avatar", "")
 
         wiki_page: dict[str, Any] = {}
-        extra_info: dict[str, Any] = {}
+        extra_info: WikiExtra | None = None
         if isinstance(wiki_result, Exception):
             logging.getLogger(__name__).debug("获取维基信息失败", exc_info=wiki_result)
         else:

@@ -9,6 +9,8 @@ import requests
 import wikipediaapi
 from bs4 import BeautifulSoup
 
+from ..models import SocialLink, WikiExtra
+
 if TYPE_CHECKING:
     from ..cache import TTLCache
     from ..rate_limiter import RateLimiter
@@ -109,19 +111,12 @@ class WikiService:
             add(p.get("title", ""))
         return aliases
 
-    def get_star_extra_info(self, wiki_url: str) -> dict[str, Any]:
+    def get_star_extra_info(self, wiki_url: str) -> WikiExtra:
         logger = logging.getLogger(__name__)
 
-        info: dict[str, Any] = {
-            "birth_date": "",
-            "height": "",
-            "measurements": "",
-            "cup": "",
-            "socials": [],
-        }
         if not wiki_url:
             logger.debug("wiki_url为空，无法获取extra_info")
-            return info
+            return WikiExtra()
 
         logger.debug(f"开始获取extra_info，wiki_url: {wiki_url}")
         from_wiki = self._extract_info_from_wikipedia(wiki_url)
@@ -130,27 +125,31 @@ class WikiService:
         logger.debug(f"从Wikipedia获取的信息: {from_wiki}")
         logger.debug(f"从Wikidata获取的信息: {from_wikidata}")
 
-        info["birth_date"] = from_wiki.get("birth_date") or from_wikidata.get("birth_date") or ""
-        info["height"] = from_wiki.get("height") or from_wikidata.get("height") or ""
-        info["measurements"] = (
-            from_wiki.get("measurements") or from_wikidata.get("measurements") or ""
-        )
-        info["cup"] = from_wiki.get("cup") or from_wikidata.get("cup") or ""
+        birth_date = from_wiki.get("birth_date") or from_wikidata.get("birth_date") or ""
+        height = from_wiki.get("height") or from_wikidata.get("height") or ""
+        measurements = from_wiki.get("measurements") or from_wikidata.get("measurements") or ""
+        cup = from_wiki.get("cup") or from_wikidata.get("cup") or ""
 
-        socials: list[dict[str, str]] = []
+        socials: list[SocialLink] = []
         seen: set = set()
         for src in [from_wikidata.get("socials", []), from_wiki.get("socials", [])]:
             for s in src:
-                url = (s.get("url") or "").strip()
-                label = (s.get("label") or "链接").strip()
+                url = s.url.strip()
+                label = s.label.strip()
                 if not url or url in seen:
                     continue
                 seen.add(url)
-                socials.append({"label": label, "url": url})
-        info["socials"] = socials[:6]
+                socials.append(SocialLink(label=label, url=url))
 
-        logger.debug(f"最终extra_info: {info}")
-        return info
+        result = WikiExtra(
+            birth_date=birth_date,
+            height=height,
+            measurements=measurements,
+            cup=cup,
+            socials=socials[:6],
+        )
+        logger.debug(f"最终extra_info: {result}")
+        return result
 
     # ------------------------------------------------------------------
     # 内部方法
@@ -263,7 +262,7 @@ class WikiService:
                     info["height"] = f"{amount:g}"
                 break
 
-            socials: list[dict[str, str]] = []
+            socials: list[SocialLink] = []
             social_map = [
                 ("P2002", "X/Twitter", "https://x.com/{v}"),
                 ("P2003", "Instagram", "https://www.instagram.com/{v}"),
@@ -279,7 +278,7 @@ class WikiService:
                 if pid in ("P2002", "P2003", "P7085") and raw.startswith("@"):
                     raw = raw[1:]
                 url = url_tpl.format(v=raw)
-                socials.append({"label": label, "url": url})
+                socials.append(SocialLink(label=label, url=url))
             info["socials"] = socials
         except Exception:
             logging.getLogger(__name__).debug(
@@ -342,7 +341,7 @@ class WikiService:
                     if not info["cup"]:
                         info["cup"] = value
 
-            socials: list[dict[str, str]] = []
+            socials: list[SocialLink] = []
             seen_urls: set = set()
             for a in infobox.find_all("a", href=True):
                 href = a.get("href", "").strip()
@@ -370,7 +369,7 @@ class WikiService:
                             label = "TikTok"
                         elif "youtube.com" in href:
                             label = "YouTube"
-                        socials.append({"label": label, "url": href})
+                        socials.append(SocialLink(label=label, url=href))
                         seen_urls.add(href)
             info["socials"] = socials
         except Exception:

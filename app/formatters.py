@@ -75,11 +75,11 @@ def format_profile(
         wiki_url = esc(profile.wiki_url, quote=True)
         lines.append(f'<b>{_t("profile_wiki")}</b><a href="{wiki_url}">{title}</a>')
     if profile.extra_info:
-        birth_date = esc(profile.extra_info.get("birth_date", ""))
-        height = esc(profile.extra_info.get("height", ""))
-        measurements = esc(profile.extra_info.get("measurements", ""))
-        cup = esc(profile.extra_info.get("cup", ""))
-        socials = profile.extra_info.get("socials", [])
+        birth_date = esc(profile.extra_info.birth_date)
+        height = esc(profile.extra_info.height)
+        measurements = esc(profile.extra_info.measurements)
+        cup = esc(profile.extra_info.cup)
+        socials = profile.extra_info.socials
         if birth_date or height or measurements or cup or socials:
             lines.append("")
             lines.append("<b>" + _t("profile_bio") + "</b>")
@@ -94,8 +94,8 @@ def format_profile(
             if socials:
                 links = []
                 for s in socials[:6]:
-                    label = esc(s.get("label", "链接"))
-                    url = esc(s.get("url", ""), quote=True)
+                    label = esc(s.label)
+                    url = esc(s.url, quote=True)
                     if url:
                         links.append(f'<a href="{url}">{label}</a>')
                 if links:
