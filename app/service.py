@@ -5,10 +5,10 @@ import logging
 import os
 from typing import Any, cast
 
+import httpx
 from jvav import JavBusUtil
 
 from .cache import TTLCache
-from .http_utils import build_retry_session
 from .magnet_search import MagnetSearch
 from .models import ActorSearchResult, ActressProfile, JavBusWork, MagnetLink, MergedWork, WikiExtra
 from .rate_limiter import RateLimiter
@@ -52,7 +52,14 @@ class ActressService:
         self.s2t = OpenCC("s2t") if OpenCC else None
         self.t2s = OpenCC("t2s") if OpenCC else None
         self.wiki_user_agent = "tg-jvav-bot/1.0 (https://t.me/My_JavBot_bot)"
-        self.http = build_retry_session(proxy_addr=proxy_addr)
+        transport = httpx.HTTPTransport(retries=3)
+        limits = httpx.Limits(max_keepalive_connections=20, max_connections=50)
+        self.http = httpx.Client(
+            transport=transport,
+            limits=limits,
+            timeout=httpx.Timeout(20.0),
+            proxies={"all": proxy_addr} if proxy_addr else None,
+        )
         self._bot_session = BotSession(proxy_addr)
         self._magnet_search = MagnetSearch(proxy_addr)
 

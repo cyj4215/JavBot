@@ -2,10 +2,27 @@ import logging
 import subprocess
 
 import requests
-
-from .http_utils import build_retry_session
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 logger = logging.getLogger("jvav_bot.download")
+
+
+def _make_session(proxy_addr: str = "") -> requests.Session:
+    retry = Retry(
+        total=3,
+        connect=3,
+        read=3,
+        backoff_factor=0.6,
+        status_forcelist=(429, 500, 502, 503, 504),
+    )
+    adapter = HTTPAdapter(max_retries=retry, pool_connections=20, pool_maxsize=20)
+    session = requests.Session()
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    if proxy_addr:
+        session.proxies.update({"http": proxy_addr, "https": proxy_addr})
+    return session
 
 
 def download_image(
@@ -16,7 +33,7 @@ def download_image(
         return None
 
     if session is None:
-        session = build_retry_session(proxy_addr=proxy_addr)
+        session = _make_session(proxy_addr=proxy_addr)
     headers = {
         "Referer": "https://www.javbus.com/",
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

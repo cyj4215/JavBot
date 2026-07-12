@@ -5,7 +5,7 @@ import re
 from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote, urlparse
 
-import requests
+import httpx
 import wikipediaapi
 from bs4 import BeautifulSoup
 
@@ -23,7 +23,7 @@ class WikiService:
         self,
         proxy_addr: str,
         wiki_user_agent: str,
-        http_session: requests.Session,
+        http_session: httpx.Client,
         wiki_page_cache: TTLCache,
         wiki_limiter: RateLimiter,
     ):
