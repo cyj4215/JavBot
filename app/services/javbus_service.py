@@ -3,7 +3,10 @@ from __future__ import annotations
 import atexit
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
+
+from ..models.magnets import MagnetLink
+from ..models.works import JavBusWork
 
 if TYPE_CHECKING:
     from jvav import JavBusUtil
@@ -21,7 +24,7 @@ class JavBusService:
         av_meta_cache: TTLCache,
         javbus_limiter: RateLimiter,
         uncensored: bool = False,
-        magnet_search_module=None,
+        magnet_search_module: Any = None,
     ):
         self.javbus = javbus_util
         self.av_meta_cache = av_meta_cache
@@ -38,20 +41,13 @@ class JavBusService:
     # 公共方法
     # ------------------------------------------------------------------
 
-    def get_av_meta(self, av_id: str, is_uncensored: bool | None = None) -> dict[str, Any]:
+    def get_av_meta(self, av_id: str, is_uncensored: Optional[bool] = None) -> JavBusWork:
         if is_uncensored is None:
             is_uncensored = self.uncensored
         cached = self.av_meta_cache.get((av_id, is_uncensored))
         if cached is not None:
-            return cached
-        meta: dict[str, Any] = {
-            "id": av_id,
-            "date": "未知",
-            "img": "",
-            "url": "",
-            "title": "",
-            "magnets": [],
-        }
+            return JavBusWork.model_validate(cached)
+
         try:
             self._javbus_limiter.wait()
             code, av = self.javbus.get_av_by_id(av_id, is_nice=False, is_uncensored=is_uncensored)
@@ -60,75 +56,63 @@ class JavBusService:
                 img = (av.get("img") or "").strip()
                 url = (av.get("url") or "").strip()
                 title = (av.get("title") or "").strip()
-                if date:
-                    meta["date"] = date
-                if img.startswith("http://") or img.startswith("https://"):
-                    meta["img"] = img
-                if url:
-                    meta["url"] = url
-                if title:
-                    meta["title"] = title
+
                 code, magnets = self.javbus.get_av_magnets(av_id, is_uncensored=is_uncensored)
+                magnet_links = []
                 if code == 200 and magnets:
-                    meta["magnets"] = [
-                        {
-                            "title": m.get("title", ""),
-                            "size": m.get("size", ""),
-                            "magnet": m.get("magnet", ""),
-                        }
+                    magnet_links = [
+                        MagnetLink(title=m.get("title", ""), magnet=m.get("magnet", ""), size=m.get("size", ""))
                         for m in magnets[:3]
                     ]
-            self.av_meta_cache.set((av_id, is_uncensored), meta)
+
+                result = JavBusWork(
+                    id=av_id, title=title, date=date or "未知",
+                    img=img if img.startswith("http") else "",
+                    url=url, magnets=magnet_links,
+                )
+                self.av_meta_cache.set((av_id, is_uncensored), result.model_dump(mode='json'))
+                return result
         except Exception:
             logging.getLogger(__name__).debug("获取AV元数据失败: av_id=%s", av_id, exc_info=True)
-        return meta
 
-    def build_latest_works(self, ids: list[str]) -> list[dict[str, Any]]:
-        works: list[dict[str, Any]] = [{} for _ in ids]
-        if not ids:
-            return works
-        future_map = {
-            self._executor.submit(self.get_av_meta, av_id): idx for idx, av_id in enumerate(ids)
-        }
-        for future in as_completed(future_map):
-            idx = future_map[future]
-            try:
-                works[idx] = future.result()
-            except Exception:
-                logging.getLogger(__name__).debug(
-                    "获取作品元数据失败: av_id=%s", ids[idx], exc_info=True
-                )
-                works[idx] = {"id": ids[idx], "date": "未知", "img": "", "url": "", "title": ""}
+        return JavBusWork(id=av_id)
+
+    def build_latest_works(self, ids: list[str]) -> list[JavBusWork]:
+        works: list[JavBusWork] = []
+        for av_id in ids[:20]:
+            work = self.get_av_meta(av_id)
+            works.append(work)
         return works
 
-    def get_av_magnets(self, av_id: str, limit: int = 5) -> list[dict[str, Any]]:
+    def get_av_magnets(self, av_id: str, limit: int = 5) -> list[MagnetLink]:
         from ..magnet_search import search_magnets
 
-        javbus_magnets: list[dict[str, Any]] = []
+        javbus_magnets: list[MagnetLink] = []
         try:
             self._javbus_limiter.wait()
             code, magnets = self.javbus.get_av_magnets(av_id, is_uncensored=self.uncensored)
             if code == 200 and magnets:
                 javbus_magnets = [
-                    {
-                        "title": m.get("title", ""),
-                        "size": m.get("size", ""),
-                        "magnet": m.get("magnet", ""),
-                    }
+                    MagnetLink(title=m.get("title", ""), magnet=m.get("magnet", ""), size=m.get("size", ""))
                     for m in magnets[:limit]
                 ]
         except Exception:
             logging.getLogger(__name__).debug(
                 "获取JavBus磁力链接失败: av_id=%s", av_id, exc_info=True
             )
-        sukebei_magnets = search_magnets(av_id, max(0, limit - len(javbus_magnets)), 20)
+
+        sukebei_magnets_raw = search_magnets(av_id, max(0, limit - len(javbus_magnets)), 20)
+        sukebei_magnets = [
+            MagnetLink(title=m.get("title", ""), magnet=m.get("magnet", ""), size=m.get("size", ""))
+            for m in sukebei_magnets_raw
+        ]
+
         seen: set = set()
-        result: list[dict[str, Any]] = []
+        result: list[MagnetLink] = []
         for m in javbus_magnets + sukebei_magnets:
-            magnet = m.get("magnet", "").strip()
-            if not magnet or magnet in seen:
+            if not m.magnet or m.magnet in seen:
                 continue
-            seen.add(magnet)
+            seen.add(m.magnet)
             result.append(m)
             if len(result) >= limit:
                 break
