@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.handlers.works import _build_works_page
+from app.models import MergedWork
 
 
 class TestWorksCallback:
@@ -21,9 +22,9 @@ class TestWorksCallback:
             found=True,
             star_name="TestActress",
             latest_works=[
-                {"id": "TEST-001", "img": "https://img.test/1.jpg", "date": "2026-05-01", "title": "Work 1"},
-                {"id": "TEST-002", "img": "https://img.test/2.jpg", "date": "2026-05-02", "title": "Work 2"},
-                {"id": "TEST-003", "img": "https://img.test/3.jpg", "date": "", "title": ""},
+                MergedWork(id="TEST-001", img="https://img.test/1.jpg", date="2026-05-01", title="Work 1"),
+                MergedWork(id="TEST-002", img="https://img.test/2.jpg", date="2026-05-02", title="Work 2"),
+                MergedWork(id="TEST-003", img="https://img.test/3.jpg", date="", title=""),
             ])
 
     async def _call(self, update, context):
@@ -64,7 +65,7 @@ class TestWorksCallback:
         """No-photo messages with no img_url → edit_message_text."""
         self._svc.query_profile_async.return_value = _fake_profile(
             found=True, star_name="TestActress",
-            latest_works=[{"id": "TEXT-001", "img": "", "date": "", "title": "Text Only"}],
+            latest_works=[MergedWork(id="TEXT-001", img="", date="", title="Text Only")],
         )
         mock_q.message.photo = None
         mock_q.data = _signed_works("TestActress|0")
@@ -75,7 +76,7 @@ class TestWorksCallback:
         """No img + no photo → edit_message_text with AV ID."""
         self._svc.query_profile_async.return_value = _fake_profile(
             found=True, star_name="TestActress",
-            latest_works=[{"id": "TEXT-001", "img": "", "date": "", "title": "Text Only"}],
+            latest_works=[MergedWork(id="TEXT-001", img="", date="", title="Text Only")],
         )
         mock_q.message.photo = None
         mock_q.data = _signed_works("TestActress|0")
@@ -109,7 +110,7 @@ class TestWorksCallback:
 
     async def test_works_capped_at_three(self, mock_update, mock_context, mock_q):
         """Works list capped to 3 → no ▶️ at index 2 (last of 3, not last of 9)."""
-        many_works = [{"id": f"TEST-{i:03d}", "img": "", "date": "", "title": ""}
+        many_works = [MergedWork(id=f"TEST-{i:03d}", img="", date="", title="")
                       for i in range(1, 10)]
         self._svc.query_profile_async.return_value = _fake_profile(
             found=True, star_name="Many", latest_works=many_works
@@ -128,8 +129,8 @@ class TestWorksCallback:
         self._svc.query_profile_async.return_value = _fake_profile(
             found=True, star_name="TestActress",
             latest_works=[
-                {"id": "A-001", "img": "", "date": "", "title": ""},
-                {"id": "A-002", "img": "", "date": "", "title": ""},
+                MergedWork(id="A-001", img="", date="", title=""),
+                MergedWork(id="A-002", img="", date="", title=""),
             ],
         )
         mock_q.message.photo = None
@@ -144,7 +145,7 @@ class TestBuildWorksPage:
 
     def test_magnet_button_has_correct_prefix(self):
         from app.secure_callback import resolve_callback
-        works = [{"id": "TEST-001", "img": "https://img.test/1.jpg", "date": "", "title": ""}]
+        works = [MergedWork(id="TEST-001", img="https://img.test/1.jpg", date="", title="")]
         _, markup, _ = _build_works_page(works, "Test", 0, lambda k, *a: k)
         assert markup is not None
         for row in markup.inline_keyboard:
@@ -156,7 +157,7 @@ class TestBuildWorksPage:
 
     def test_back_button_uses_favquery_prefix(self):
         from app.secure_callback import resolve_callback
-        works = [{"id": "TEST-001", "img": "https://img.test/1.jpg", "date": "", "title": ""}]
+        works = [MergedWork(id="TEST-001", img="https://img.test/1.jpg", date="", title="")]
         _, markup, _ = _build_works_page(works, "Test", 0, lambda k, *a: k)
         assert markup is not None
         # Last row should be favquery back button
@@ -179,7 +180,7 @@ def _fake_profile(found=True, star_name="Test", query="Test", latest_works=None)
         star_name=star_name,
         star_id=star_name.upper() if found else "",
         latest_works=latest_works or [],
-        extra_info={},
+        extra_info=None,
         avatar_url="https://javdb.com/avatar/test.jpg",
     )
 

@@ -1,11 +1,11 @@
 """Tests for works browser: _build_works_page, works list capping."""
-from telegram import InlineKeyboardMarkup
 
 from app.handlers.works import _build_works_page
+from app.models import MergedWork
 
 
 def _make_work(av_id, date="2026-05-01", title="Test Title", img="https://javbus.com/cover/xxx.jpg"):
-    return {"id": av_id, "date": date, "title": title, "img": img}
+    return MergedWork(id=av_id, date=date, title=title, img=img)
 
 
 def _t(key, *args):
@@ -106,13 +106,13 @@ class TestBuildWorksPage:
                 assert "▶️" not in btn.text
 
     def test_work_without_img(self):
-        works = [{"id": "NO-IMG", "date": "", "title": "", "img": ""}]
+        works = [MergedWork(id="NO-IMG", date="", title="", img="")]
         caption, keyboard, img_url = _build_works_page(works, "Test", 0, _t)
         assert "NO-IMG" in caption
         assert img_url == ""
 
     def test_work_without_id(self):
-        works = [{"id": "", "date": "", "title": "", "img": "https://example.com/img.jpg"}]
+        works = [MergedWork(id="", date="", title="", img="https://example.com/img.jpg")]
         caption, keyboard, img_url = _build_works_page(works, "Test", 0, _t)
         assert img_url == "https://example.com/img.jpg"
         # No magnet button for work without id

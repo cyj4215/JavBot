@@ -1,5 +1,4 @@
 """Tests for javdb_scraper: avatar URL handling."""
-import pytest
 
 from app.services.javdb_scraper import _parse_actor_search
 
@@ -14,7 +13,7 @@ class TestParseActorSearchAvatarUrl:
         """
         actors = _parse_actor_search(html)
         assert len(actors) == 1
-        assert actors[0]["avatar"] == "https://javdb.com/actors/avatar/xxx.jpg"
+        assert actors[0].avatar == "https://javdb.com/actors/avatar/xxx.jpg"
 
     def test_relative_url_made_absolute(self):
         html = """
@@ -25,7 +24,7 @@ class TestParseActorSearchAvatarUrl:
         """
         actors = _parse_actor_search(html)
         assert len(actors) == 1
-        assert actors[0]["avatar"] == "https://javdb.com/uploads/actor/avatar/yyy.jpg"
+        assert actors[0].avatar == "https://javdb.com/uploads/actor/avatar/yyy.jpg"
 
     def test_data_src_fallback(self):
         html = """
@@ -36,7 +35,7 @@ class TestParseActorSearchAvatarUrl:
         """
         actors = _parse_actor_search(html)
         assert len(actors) == 1
-        assert actors[0]["avatar"] == "https://javdb.com/uploads/actor/avatar/zzz.jpg"
+        assert actors[0].avatar == "https://javdb.com/uploads/actor/avatar/zzz.jpg"
 
     def test_no_img_tag(self):
         html = """
@@ -46,7 +45,7 @@ class TestParseActorSearchAvatarUrl:
         """
         actors = _parse_actor_search(html)
         assert len(actors) == 1
-        assert actors[0]["avatar"] == ""
+        assert actors[0].avatar == ""
 
     def test_empty_result(self):
         html = "<html><body>No actors</body></html>"
@@ -71,5 +70,5 @@ class TestParseActorSearchAvatarUrl:
         """
         actors = _parse_actor_search(html)
         assert len(actors) == 2
-        assert actors[0]["avatar"] == "https://javdb.com/avatar/a.jpg"
-        assert actors[1]["avatar"] == "https://javdb.com/uploads/avatar/b.jpg"
+        assert actors[0].avatar == "https://javdb.com/avatar/a.jpg"
+        assert actors[1].avatar == "https://javdb.com/uploads/avatar/b.jpg"

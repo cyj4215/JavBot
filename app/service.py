@@ -58,7 +58,7 @@ class ActressService:
             transport=transport,
             limits=limits,
             timeout=httpx.Timeout(20.0),
-            proxies={"all": proxy_addr} if proxy_addr else None,
+            proxy=proxy_addr if proxy_addr else None,
         )
         self._bot_session = BotSession(proxy_addr)
         self._magnet_search = MagnetSearch(proxy_addr)
@@ -212,8 +212,8 @@ class ActressService:
         avatar_url: str | None = None
         if isinstance(avatar_result, Exception):
             logging.getLogger(__name__).debug("获取头像失败", exc_info=avatar_result)
-        elif avatar_result and isinstance(avatar_result, dict):
-            avatar_url = avatar_result.get("avatar", "")
+        elif avatar_result:
+            avatar_url = avatar_result.avatar
 
         wiki_page: dict[str, Any] = {}
         extra_info: WikiExtra | None = None

@@ -13,6 +13,7 @@ from telegram.ext import ContextTypes
 
 from ..fav import get_favorites_manager
 from ..formatters import _SORT_LABELS, render_favorites_page
+from ..models import FavoriteEntry
 from ..secure_callback import resolve_callback as _resolve_callback
 from ..secure_callback import short_callback as _short_callback
 from .common import make_t, require_auth, require_auth_callback
@@ -226,8 +227,10 @@ async def my_favorites_cmd(
         return
 
     last_query_map = await fav_mgr.get_last_query_time_map(user.id)
+    # Convert DB dicts to typed model
+    fav_models = [FavoriteEntry.model_validate(f) for f in favorites]
     text, reply_markup = render_favorites_page(
-        favorites, page, favorites_per_page, sort=sort, last_query_map=last_query_map, _t=_
+        fav_models, page, favorites_per_page, sort=sort, last_query_map=last_query_map, _t=_
     )
 
     await msg.reply_text(
@@ -452,8 +455,9 @@ async def callback_myfav_page(
 
     _ = await make_t(shared, update)
     last_query_map = await fav_mgr.get_last_query_time_map(update.effective_user.id)
+    fav_models = [FavoriteEntry.model_validate(f) for f in favorites]
     text, reply_markup = render_favorites_page(
-        favorites, page, 6, sort=sort, last_query_map=last_query_map, _t=_
+        fav_models, page, 6, sort=sort, last_query_map=last_query_map, _t=_
     )
     await _edit_or_send(q, text, reply_markup)
 
@@ -483,8 +487,9 @@ async def callback_myfav_sort(
 
     await q.answer(_("sort_changed", _SORT_LABELS.get(next_sort, next_sort)))
     last_query_map = await fav_mgr.get_last_query_time_map(update.effective_user.id)
+    fav_models = [FavoriteEntry.model_validate(f) for f in favorites]
     text, reply_markup = render_favorites_page(
-        favorites, page, 6, sort=next_sort, last_query_map=last_query_map, _t=_
+        fav_models, page, 6, sort=next_sort, last_query_map=last_query_map, _t=_
     )
     await _edit_or_send(q, text, reply_markup)
 

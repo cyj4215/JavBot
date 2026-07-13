@@ -1,12 +1,12 @@
 """Tests for WikiService: Wikipedia/Wikidata info extraction."""
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 import requests
 
 from app.cache import TTLCache
+from app.models import WikiExtra
 from app.rate_limiter import RateLimiter
-
 
 # ── Helper: build a WikiService with fully mocked dependencies ──
 
@@ -208,7 +208,7 @@ class TestExtractInfoFromWikipedia:
         svc = _make_svc(http_session=http)
         info = svc._extract_info_from_wikipedia("https://zh.wikipedia.org/wiki/Test")
         assert len(info["socials"]) >= 1
-        urls = [s["url"] for s in info["socials"]]
+        urls = [s.url for s in info["socials"]]
         assert any("twitter.com" in u for u in urls)
 
     def test_no_infobox_returns_empty(self):
@@ -425,13 +425,13 @@ class TestGetStarExtraInfo:
         ]
         svc = _make_svc(http_session=http)
         info = svc.get_star_extra_info("https://zh.wikipedia.org/wiki/三上悠亜")
-        assert isinstance(info, dict)
-        assert "birth_date" in info
-        assert "height" in info
-        assert "socials" in info
+        assert isinstance(info, WikiExtra)
+        assert info.birth_date is not None
+        assert info.height is not None
+        assert info.socials is not None
 
     def test_empty_url_returns_defaults(self):
-        """Empty wiki_url → default empty dict."""
+        """Empty wiki_url → default WikiExtra."""
         svc = _make_svc()
         info = svc.get_star_extra_info("")
-        assert info == {"birth_date": "", "height": "", "measurements": "", "cup": "", "socials": []}
+        assert info == WikiExtra()

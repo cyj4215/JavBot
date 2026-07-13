@@ -9,7 +9,7 @@ _jvav_mock = MagicMock()
 _jvav_mock.JavBusUtil = MagicMock
 sys.modules["jvav"] = _jvav_mock
 
-from app.models import ActressProfile
+from app.models import ActorSearchResult, ActressProfile, MergedWork, SocialLink, WikiExtra
 from app.service import ActressService
 
 
@@ -60,15 +60,13 @@ def _mock_javbus_latest(svc, ids=None):
 def _mock_wiki(svc, title="三上悠亜", url="https://zh.wikipedia.org/wiki/三上悠亜"):
     """Set up wiki service returns."""
     svc._wiki_svc.wiki_page_by_lang = MagicMock(return_value={"title": title, "url": url})
-    svc._wiki_svc.get_star_extra_info = MagicMock(return_value={
-        "birth_date": "1993-08-19",
-        "height": "160cm",
-        "measurements": "88-58-88",
-        "cup": "E",
-        "socials": [
-            {"label": "Twitter", "url": "https://twitter.com/mikami_yua"},
-        ],
-    })
+    svc._wiki_svc.get_star_extra_info = MagicMock(return_value=WikiExtra(
+        birth_date="1993-08-19",
+        height="160cm",
+        measurements="88-58-88",
+        cup="E",
+        socials=[SocialLink(label="Twitter", url="https://twitter.com/mikami_yua")],
+    ))
     return svc
 
 
@@ -79,11 +77,11 @@ def _mock_javdb_scraper(svc, works=None, avatar="https://javdb.com/avatar/test.j
             {"id": "TEST-004", "img": "https://javdb.com/cover/004.jpg", "date": "2026-05-04"},
         ]
     svc._javdb_scraper.get_actress_works = AsyncMock(return_value=works)
-    svc._javdb_scraper.search_actress = AsyncMock(return_value={
-        "name": "三上悠亜",
-        "url": "https://javdb.com/actors/abc",
-        "avatar": avatar,
-    })
+    svc._javdb_scraper.search_actress = AsyncMock(return_value=ActorSearchResult(
+        name="三上悠亜",
+        url="https://javdb.com/actors/abc",
+        avatar=avatar,
+    ))
     return svc
 
 
@@ -93,7 +91,7 @@ class TestQueryProfileAsync:
     async def test_cache_hit_returns_fast(self, svc):
         """Cache hit → returns cached ActressProfile without calling sub-services."""
         cached = ActressProfile(found=True, query="test", star_name="Cached", star_id="C-001")
-        svc.profile_cache.set(("profile", "test", 5, 5), cached.__dict__)
+        svc.profile_cache.set(("profile", "test", 5, 5), cached.model_dump(mode='json'))
         svc._resolver.resolve = MagicMock(side_effect=AssertionError("should not be called"))
 
         result = await svc.query_profile_async("test")
@@ -129,7 +127,7 @@ class TestQueryProfileAsync:
         assert result.found
         assert result.star_name == "三上悠亜"
         assert result.star_id == "SSIS-123"
-        assert result.extra_info["birth_date"] == "1993-08-19"
+        assert result.extra_info.birth_date == "1993-08-19"
         assert result.avatar_url == "https://javdb.com/avatar/test.jpg"
 
     async def test_latest_works_from_javbus(self, svc):
@@ -141,7 +139,7 @@ class TestQueryProfileAsync:
 
         result = await svc.query_profile_async("三上悠亜")
         assert len(result.latest_works) >= 3
-        ids = [w["id"] for w in result.latest_works]
+        ids = [w.id for w in result.latest_works]
         assert "TEST-001" in ids
         assert "TEST-002" in ids
         assert "TEST-003" in ids
@@ -157,7 +155,7 @@ class TestQueryProfileAsync:
         ])
 
         result = await svc.query_profile_async("三上悠亜")
-        ids = [w["id"] for w in result.latest_works]
+        ids = [w.id for w in result.latest_works]
         # TEST-001 from JavBus kept (already in dedup), JAVDB-001 added
         assert ids.count("TEST-001") == 1
         assert "JAVDB-001" in ids
@@ -175,7 +173,7 @@ class TestQueryProfileAsync:
         _mock_javdb_scraper(svc, works=[])
 
         result = await svc.query_profile_async("test")
-        dates = [w.get("date", "") for w in result.latest_works]
+        dates = [w.date for w in result.latest_works]
         # C (May) > A (Apr) > B (empty)
         assert dates == ["2026-05-01", "2026-04-01", ""]
 
@@ -256,9 +254,9 @@ class TestQueryProfileAsync:
         _mock_javbus_latest(svc, ids=[])
         _mock_wiki(svc)
         svc._javdb_scraper.get_actress_works = AsyncMock(return_value=[])
-        svc._javdb_scraper.search_actress = AsyncMock(return_value={
-            "name": "三上悠亜", "url": "https://javdb.com/abc", "avatar": "https://javdb.com/avatar.jpg",
-        })
+        svc._javdb_scraper.search_actress = AsyncMock(return_value=ActorSearchResult(
+            name="三上悠亜", url="https://javdb.com/abc", avatar="https://javdb.com/avatar.jpg",
+        ))
 
         result = await svc.query_profile_async("三上悠亜")
         assert result.avatar_url == "https://javdb.com/avatar.jpg"

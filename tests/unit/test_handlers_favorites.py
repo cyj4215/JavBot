@@ -1,9 +1,10 @@
 """Tests for favorite_query_callback: favquery, favnow, unfavnow, myfav page/sort."""
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
-from app.handlers.favorites import _parse_actress_names, _fuzzy_match
+from app.handlers.favorites import _fuzzy_match, _parse_actress_names
+from app.models import FavoriteEntry
 
 
 class TestParseActressNames:
@@ -157,7 +158,7 @@ class TestCallbackMyfavPage:
         import app.handlers.favorites as hf_mod
         self._fav_mgr = AsyncMock()
         self._fav_mgr.get_favorites.return_value = {"items": [
-            {"actress_name": "A", "actress_id": "A-001", "created_at": "2026-05-01"},
+            FavoriteEntry(actress_name="A", actress_id="A-001", created_at="2026-05-01"),
         ]}
         monkeypatch.setattr(hf_mod, "get_favorites_manager", AsyncMock(return_value=self._fav_mgr))
 
@@ -186,7 +187,7 @@ class TestCallbackMyfavSort:
         import app.handlers.favorites as hf_mod
         self._fav_mgr = AsyncMock()
         self._fav_mgr.get_favorites.return_value = {"items": [
-            {"actress_name": "A", "actress_id": "A-001", "created_at": "2026-05-01"},
+            FavoriteEntry(actress_name="A", actress_id="A-001", created_at="2026-05-01"),
         ]}
         monkeypatch.setattr(hf_mod, "get_favorites_manager", AsyncMock(return_value=self._fav_mgr))
 
@@ -204,7 +205,7 @@ def _fake_profile(found=True, star_name="Test", query="Test", latest_works=None)
         found=found, query=query, star_name=star_name,
         star_id=star_name.upper() if found else "",
         latest_works=latest_works or [],
-        extra_info={},
+        extra_info=None,
         avatar_url="",
     )
 

@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.cache import TTLCache
+from app.models import ActorSearchResult
 
 
 class TestRankService:
@@ -27,8 +28,8 @@ class TestRankService:
 
     async def test_get_hot_star_rankings_delegates_to_scraper(self, svc, scraper):
         scraper.get_actors_ranking.return_value = [
-            {"name": "Actor A", "url": "/a", "avatar": ""},
-            {"name": "Actor B", "url": "/b", "avatar": ""},
+            ActorSearchResult(name="Actor A", url="/a", avatar=""),
+            ActorSearchResult(name="Actor B", url="/b", avatar=""),
         ]
         result = await svc.get_hot_star_rankings(limit=20, page=1)
         assert len(result) == 2
@@ -36,7 +37,7 @@ class TestRankService:
 
     async def test_result_cached(self, svc, scraper):
         scraper.get_actors_ranking.return_value = [
-            {"name": "Cached", "url": "/c", "avatar": ""},
+            ActorSearchResult(name="Cached", url="/c", avatar=""),
         ]
         await svc.get_hot_star_rankings(limit=20, page=1)
         scraper.get_actors_ranking.reset_mock()
@@ -54,7 +55,7 @@ class TestRankService:
     async def test_fallback_to_page_1_cache(self, svc, scraper):
         """Page 2 fails → falls back to cached page 1 data."""
         # Prime page 1 cache
-        scraper.get_actors_ranking.return_value = [{"name": "Prime", "url": "/p"}]
+        scraper.get_actors_ranking.return_value = [ActorSearchResult(name="Prime", url="/p", avatar="")]
         await svc.get_hot_star_rankings(limit=20, page=1)
         # Page 2 fails
         scraper.get_actors_ranking.return_value = []
@@ -79,7 +80,7 @@ class TestRankService:
         assert result == []
 
     async def test_warm_cache_calls_scraper(self, svc, scraper):
-        scraper.get_actors_ranking.return_value = [{"name": f"Warm Page {p}"} for p in range(1, 21)]
+        scraper.get_actors_ranking.return_value = [ActorSearchResult(name=f"Warm Page {p}", url="", avatar="") for p in range(1, 21)]
         await svc._warm_cache()
         # Should have called scraper for pages 1, 2, 3
         assert scraper.get_actors_ranking.call_count >= 1
@@ -87,7 +88,7 @@ class TestRankService:
     async def test_warm_cache_skips_if_cached(self, svc, scraper):
         """Warming skips pages already in cache."""
         svc.rank_cache.set(("rank", 20, 1), [{"name": "Already cached"}])
-        scraper.get_actors_ranking.return_value = [{"name": "New"}]
+        scraper.get_actors_ranking.return_value = [ActorSearchResult(name="New", url="", avatar="")]
         await svc._warm_cache()
         # Page 1 cached → not called, pages 2-3 called
         calls = [c[1] for c in scraper.get_actors_ranking.call_args_list]
@@ -130,20 +131,20 @@ class TestJavDbScraperGetActorsRanking:
           <img src="https://javdb.com/avatar/b.jpg">
         </div>
         """
-        with patch.object(scraper, "_rate_limited_curl", AsyncMock(return_value=html)):
+        with patch.object(scraper, "_rate_limited_fetch", AsyncMock(return_value=html)):
             result = await scraper.get_actors_ranking(limit=20, page=1)
         assert len(result) == 2
-        assert result[0]["name"] == "A Actress"
-        assert result[1]["name"] == "B Actress"
+        assert result[0].name == "A Actress"
+        assert result[1].name == "B Actress"
 
     async def test_cloudflare_challenge_returns_empty(self, scraper):
         html = "<html><head><title>Cloudflare Challenge</title></head><body></body></html>"
-        with patch.object(scraper, "_rate_limited_curl", AsyncMock(return_value=html)):
+        with patch.object(scraper, "_rate_limited_fetch", AsyncMock(return_value=html)):
             result = await scraper.get_actors_ranking(limit=20, page=1)
         assert result == []
 
     async def test_curl_failure_returns_empty(self, scraper):
-        with patch.object(scraper, "_rate_limited_curl", AsyncMock(return_value=None)):
+        with patch.object(scraper, "_rate_limited_fetch", AsyncMock(return_value=None)):
             result = await scraper.get_actors_ranking(limit=20, page=1)
         assert result == []
 
@@ -154,25 +155,25 @@ class TestJavDbScraperGetActorsRanking:
           <img src="">
         </div>
         """
-        with patch.object(scraper, "_rate_limited_curl", AsyncMock(return_value=html)):
+        with patch.object(scraper, "_rate_limited_fetch", AsyncMock(return_value=html)):
             await scraper.get_actors_ranking(limit=20, page=1)
         # Second call should use cache
         curl_mock = AsyncMock(side_effect=AssertionError("should not call curl"))
-        with patch.object(scraper, "_rate_limited_curl", curl_mock):
+        with patch.object(scraper, "_rate_limited_fetch", curl_mock):
             result = await scraper.get_actors_ranking(limit=20, page=1)
             assert len(result) == 1
-            assert result[0]["name"] == "Cached"
+            assert result[0].name == "Cached"
 
     async def test_limit_respected(self, scraper):
         html = "".join(
             f'<div class="actor-box"><a href="/a{i}"><strong>A{i}</strong></a><img src=""></div>'
             for i in range(10)
         )
-        with patch.object(scraper, "_rate_limited_curl", AsyncMock(return_value=html)):
+        with patch.object(scraper, "_rate_limited_fetch", AsyncMock(return_value=html)):
             result = await scraper.get_actors_ranking(limit=3, page=1)
         assert len(result) == 3
 
     async def test_empty_html_returns_empty(self, scraper):
-        with patch.object(scraper, "_rate_limited_curl", AsyncMock(return_value="")):
+        with patch.object(scraper, "_rate_limited_fetch", AsyncMock(return_value="")):
             result = await scraper.get_actors_ranking(limit=20, page=1)
         assert result == []

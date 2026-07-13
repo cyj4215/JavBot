@@ -7,6 +7,7 @@ from app.handlers.push import (
     check_and_push_new_works,
     send_new_work_notification,
 )
+from app.models import FavoriteEntry, MergedWork
 
 
 class TestPushToggleCmd:
@@ -73,14 +74,14 @@ class TestCheckAndPushNewWorks:
         self._fav_mgr = AsyncMock()
         self._fav_mgr.get_users_with_push_enabled.return_value = [12345]
         self._fav_mgr.get_favorites.return_value = {"items": [
-            {"actress_name": "TestActress", "actress_id": "TA-001"},
+            {"actress_name": "TestActress", "actress_id": "TA-001", "created_at": "2026-05-01"},
         ], "next_cursor": None, "total": 1}
         self._fav_mgr.record_actress_work.return_value = True
         monkeypatch.setattr(push_mod, "get_favorites_manager", AsyncMock(return_value=self._fav_mgr))
         self._svc = shared_global.service
         self._svc.query_profile_async.return_value = _fake_profile(
             found=True, star_name="TestActress",
-            latest_works=[{"id": "NEW-001", "img": "", "date": "2026-07-01", "title": "New Work"}],
+            latest_works=[MergedWork(id="NEW-001", img="", date="2026-07-01", title="New Work")],
         )
         shared_global.config.push_enabled_global = True
         shared_global.config.allowed_user_ids = {12345}
@@ -90,7 +91,6 @@ class TestCheckAndPushNewWorks:
         """push_enabled_global=False → skip check."""
         shared_global.config.push_enabled_global = False
         context = MagicMock()
-        from app.handlers.push import check_and_push_new_works
         await check_and_push_new_works(context)
         # No favorites query = skipped
         self._fav_mgr.get_users_with_push_enabled.assert_not_called()
@@ -100,7 +100,6 @@ class TestCheckAndPushNewWorks:
         """No users with push enabled → skip."""
         self._fav_mgr.get_users_with_push_enabled.return_value = []
         context = MagicMock()
-        from app.handlers.push import check_and_push_new_works
         await check_and_push_new_works(context)
         self._fav_mgr.get_favorites.assert_not_called()
 
@@ -109,7 +108,6 @@ class TestCheckAndPushNewWorks:
         """New work found → notification sent."""
         context = MagicMock()
         context.bot = AsyncMock()
-        from app.handlers.push import check_and_push_new_works
         await check_and_push_new_works(context)
         # record_actress_work called for the new work
         self._fav_mgr.record_actress_work.assert_awaited_once()
@@ -120,7 +118,6 @@ class TestCheckAndPushNewWorks:
         self._fav_mgr.record_actress_work.return_value = False
         context = MagicMock()
         context.bot = AsyncMock()
-        from app.handlers.push import check_and_push_new_works
         await check_and_push_new_works(context)
         # record_actress_work called but returned False (already recorded)
         self._fav_mgr.record_actress_work.assert_awaited_once()
@@ -131,7 +128,6 @@ class TestCheckAndPushNewWorks:
         self._svc.query_profile_async.side_effect = Exception("network error")
         context = MagicMock()
         context.bot = AsyncMock()
-        from app.handlers.push import check_and_push_new_works
         # Should not raise
         await check_and_push_new_works(context)
 
@@ -142,7 +138,6 @@ class TestCheckAndPushNewWorks:
         self._fav_mgr.get_users_with_push_enabled.return_value = [12345]
         context = MagicMock()
         context.bot = AsyncMock()
-        from app.handlers.push import check_and_push_new_works
         await check_and_push_new_works(context)
         # get_favorites should not be called for this user
         self._fav_mgr.get_favorites.assert_not_called()
@@ -161,7 +156,7 @@ class TestSendNewWorkNotification:
     async def test_sends_notification_with_work_data(self):
         """Notification sent with correct work data."""
         bot = AsyncMock()
-        work = {"id": "TEST-001", "img": "", "date": "2026-07-01", "title": "Test Title"}
+        work = MergedWork(id="TEST-001", img="", date="2026-07-01", title="Test Title")
         await send_new_work_notification(bot, 12345, "TestActress", work)
         bot.send_message.assert_awaited_once()
 
@@ -169,7 +164,7 @@ class TestSendNewWorkNotification:
     async def test_handles_missing_work_fields(self):
         """Missing fields → no crash."""
         bot = AsyncMock()
-        work = {"id": "TEST-001"}
+        work = MergedWork(id="TEST-001")
         await send_new_work_notification(bot, 12345, "TestActress", work)
         bot.send_message.assert_awaited_once()
 
@@ -182,6 +177,6 @@ def _fake_profile(found=True, star_name="Test", query="Test", latest_works=None)
         found=found, query=query, star_name=star_name,
         star_id=star_name.upper() if found else "",
         latest_works=latest_works or [],
-        extra_info={},
+        extra_info=None,
         avatar_url="",
     )

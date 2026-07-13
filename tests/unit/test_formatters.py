@@ -6,7 +6,7 @@ import pytest
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.formatters import format_profile, format_rankings, build_rank_keyboard, looks_like_av_id
-from app.models import ActressProfile
+from app.models import ActorSearchResult, ActressProfile, WikiExtra
 
 
 class TestLooksLikeAvId:
@@ -35,7 +35,7 @@ class TestFormatRankings:
         assert "rank_empty" in result
 
     def test_with_stars(self):
-        stars = [{"name": "Actress A"}, {"name": "Actress B"}, {"name": "Actress C"}]
+        stars = [ActorSearchResult(name="Actress A", url="", avatar=""), ActorSearchResult(name="Actress B", url="", avatar=""), ActorSearchResult(name="Actress C", url="", avatar="")]
         result = format_rankings(stars, 1)
         assert "Actress A" in result
         assert "Actress B" in result
@@ -76,7 +76,7 @@ def _make_profile(
         query=star_name,
         star_name=star_name,
         star_id=star_id,
-        extra_info=extra_info or {},
+        extra_info=extra_info or WikiExtra(),
         avatar_url=avatar_url,
     )
 
