@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..cache import TTLCache
     from .javdb_scraper import JavDbScraper
 
-_FETCH_TIMEOUT_MS = 25000
+from ..models import ActorSearchResult
+
+_FETCH_TIMEOUT_S = 25
 _OVERALL_TIMEOUT_S = 30
 
 
@@ -26,7 +28,7 @@ class RankService:
         self._refresh_task: asyncio.Task | None = None
         self._warming = False
         self._scraper = javdb_scraper
-        self._last_good: dict[tuple, list[dict[str, Any]]] = {}
+        self._last_good: dict[tuple, list[ActorSearchResult]] = {}
 
     async def start_background_refresh(self) -> None:
         if self._refresh_task is not None:
@@ -66,13 +68,15 @@ class RankService:
         finally:
             self._warming = False
 
-    async def get_hot_star_rankings(self, limit: int = 20, page: int = 1) -> list[dict[str, Any]]:
+    async def get_hot_star_rankings(
+        self, limit: int = 20, page: int = 1
+    ) -> list[ActorSearchResult]:
         limit = max(1, min(limit, 50))
         page = max(1, min(page, 5))
         cache_key = ("rank", limit, page)
         cached = self.rank_cache.get(cache_key)
         if cached is not None:
-            return cached
+            return [ActorSearchResult.model_validate(a) for a in cached]
 
         try:
             result = await asyncio.wait_for(
@@ -87,19 +91,16 @@ class RankService:
         if page == 1:
             fallback = self.rank_cache.get(("rank", limit, 1))
             if fallback:
-                return fallback
-        # Fallback to last known good data for any page
-        last = self._last_good.get(cache_key)
-        if last:
+                return [ActorSearchResult.model_validate(a) for a in fallback]
+        fallback = self._last_good.get(cache_key)
+        if fallback:
             logging.info("返回缓存排行榜: page=%d (上次成功的数据)", page)
-            return last
+            return fallback
         return []
 
-    async def _try_javdb_rankings(
-        self, limit: int, page: int, _timeout: int = _FETCH_TIMEOUT_MS
-    ) -> list[dict[str, Any]] | None:
+    async def _try_javdb_rankings(self, limit: int, page: int) -> list[ActorSearchResult] | None:
         if self._scraper is None:
-            logging.error("JavDbScraper not set — call set_scraper() first")
+            logging.error("JavDbScraper not set")
             return None
 
         try:
@@ -107,7 +108,7 @@ class RankService:
             actors = await self._scraper.get_actors_ranking(limit=limit, page=page)
             if actors:
                 cache_key = ("rank", limit, page)
-                self.rank_cache.set(cache_key, actors)
+                self.rank_cache.set(cache_key, [a.model_dump(mode="json") for a in actors])
                 self._last_good[cache_key] = actors
                 logging.info("JavDb 排行榜获取成功: %d 个演员", len(actors))
                 return actors

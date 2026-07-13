@@ -4,6 +4,7 @@ Usage:
     ms = MagnetSearch(proxy="http://proxy:7890")
     links = ms.search("SSIS-123", limit=5, timeout=20)
 """
+
 from __future__ import annotations
 
 import logging
@@ -74,9 +75,13 @@ class MagnetSearch:
                 size_tag = row.select_one("td:nth-of-type(4)")
                 if not title_tag or not magnet_tag:
                     continue
-                title = str(title_tag.get("title") or title_tag.get_text(" ", strip=True) or "").strip()
+                title = str(
+                    title_tag.get("title") or title_tag.get_text(" ", strip=True) or ""
+                ).strip()
                 magnet = str(magnet_tag.get("href") or "").strip()
-                size = str(size_tag.get_text(" ", strip=True) if size_tag else "").strip() or "Unknown"
+                size = (
+                    str(size_tag.get_text(" ", strip=True) if size_tag else "").strip() or "Unknown"
+                )
                 if not title or not magnet:
                     continue
                 results.append(MagnetLink(title=title, magnet=magnet, size=size))

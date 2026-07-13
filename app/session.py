@@ -1,4 +1,5 @@
 """Async HTTP session with retry support."""
+
 from __future__ import annotations
 
 import httpx

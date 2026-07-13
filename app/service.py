@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from typing import Any, cast
+from typing import Any
 
 import httpx
 from jvav import JavBusUtil
@@ -145,8 +145,7 @@ class ActressService:
     async def get_hot_star_rankings(
         self, limit: int = 20, page: int = 1
     ) -> list[ActorSearchResult]:
-        result = await self._rank_svc.get_hot_star_rankings(limit=limit, page=page)
-        return cast(list[ActorSearchResult], result)
+        return await self._rank_svc.get_hot_star_rankings(limit=limit, page=page)
 
     async def start_rank_background_refresh(self) -> None:
         await self._rank_svc.start_background_refresh()
