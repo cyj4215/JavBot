@@ -73,8 +73,7 @@ app/
 │   └── stats.py             # /stats — usage statistics
 ├── fav/                 # Favorites CRUD, push service, export (MySQL via aiomysql)
 ├── cache.py             # TTLCache: thread-safe OrderedDict with per-key TTL + JSON persistence
-├── rate_limiter.py      # Token-bucket rate limiter (thread-safe, blocking)
-├── http_utils.py        # requests.Session factory with retry (3 retries, backoff 0.6s, pool 20)
+├── rate_limiter.py      # Token-bucket rate limiter (thread-safe, sync+async)
 ├── improved_utils.py    # Image download with retry + Referer headers (JavBus) + curl subprocess (JavDb)
 ├── magnet_search.py     # sukebei.nyaa.si scraper for magnet links (requests + BeautifulSoup)
 ├── secure_callback.py   # HMAC-SHA256 signed callback tokens with TTL + JSON persistence

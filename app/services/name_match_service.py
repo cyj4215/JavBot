@@ -94,7 +94,7 @@ class NameMatchService:
         if not self.s2t:
             return text
         try:
-            return self.s2t.convert(text)
+            return self.s2t.convert(text)  # type: ignore[no-any-return]
         except Exception:
             logging.getLogger(__name__).debug("简繁转换失败", exc_info=True)
             return text
@@ -103,7 +103,7 @@ class NameMatchService:
         if not self.t2s:
             return text
         try:
-            return self.t2s.convert(text)
+            return self.t2s.convert(text)  # type: ignore[no-any-return]
         except Exception:
             logging.getLogger(__name__).debug("繁简转换失败", exc_info=True)
             return text

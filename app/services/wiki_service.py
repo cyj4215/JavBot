@@ -52,7 +52,7 @@ class WikiService:
         cached = self.wiki_page_cache.get(cache_key)
         if cached is not None:
             logger.debug(f"从缓存获取wiki_page: {cache_key} -> {cached}")
-            return cached
+            return cached  # type: ignore[no-any-return]
 
         logger.debug(f"开始查询维基百科: topic={topic}, from_lang={from_lang}, to_lang={to_lang}")
         try:
@@ -343,7 +343,7 @@ class WikiService:
             socials: list[SocialLink] = []
             seen_urls: set = set()
             for a in infobox.find_all("a", href=True):
-                href = a.get("href", "").strip()
+                href = str(a.get("href", "")).strip()
                 if href.startswith("//"):
                     href = f"https:{href}"
                 if not href.startswith("http"):

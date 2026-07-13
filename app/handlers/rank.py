@@ -64,13 +64,13 @@ async def _handle_rank_error(
     )
     if is_edit:
         try:
-            await target.edit_message_text(
+            await target.edit_message_text(  # type: ignore[union-attr]
                 text, parse_mode=ParseMode.HTML, reply_markup=reply_markup
             )
         except Exception:
             logger.debug("编辑排行榜消息失败", exc_info=True)
     else:
-        await target.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+        await target.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)  # type: ignore[union-attr]
 
 
 async def _send_rank_result(
@@ -93,9 +93,7 @@ async def _send_rank_result(
         cached_stars = shared.service.get_rank_cache(("rank", limit, page))
         if cached_stars:
             models = [ActorSearchResult.model_validate(s) for s in cached_stars]
-            text = (
-                _t("rank_cached") + "\n\n" + format_rankings(models, page, limit=limit, _t=_t)
-            )
+            text = _t("rank_cached") + "\n\n" + format_rankings(models, page, limit=limit, _t=_t)
             kwargs = dict(
                 text=text,
                 parse_mode=ParseMode.HTML,
@@ -103,9 +101,9 @@ async def _send_rank_result(
                 reply_markup=build_rank_keyboard(limit, page, with_avatars),
             )
             if is_edit:
-                await target.edit_message_text(**kwargs)
+                await target.edit_message_text(**kwargs)  # type: ignore[union-attr]
             else:
-                await target.edit_text(**kwargs)
+                await target.edit_text(**kwargs)  # type: ignore[union-attr]
         else:
             await _handle_rank_error(target, limit, page, is_edit=is_edit)
     else:
@@ -116,9 +114,9 @@ async def _send_rank_result(
             reply_markup=build_rank_keyboard(limit, page, with_avatars),
         )
         if is_edit:
-            await target.edit_message_text(**kwargs)
+            await target.edit_message_text(**kwargs)  # type: ignore[union-attr]
         else:
-            await target.edit_text(**kwargs)
+            await target.edit_text(**kwargs)  # type: ignore[union-attr]
         if with_avatars and msg:
             await send_rank_avatars_for_page(msg, stars, page, limit, shared=shared)
 
@@ -130,10 +128,11 @@ async def rank_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shar
     _ = await make_t(shared, update)
     limit = shared.config.rank_limit_default
     page = shared.config.rank_page_default
-    if len(context.args) >= 1 and context.args[0].isdigit():
-        limit = int(context.args[0])
-    if len(context.args) >= 2 and context.args[1].isdigit():
-        page = int(context.args[1])
+    args = context.args or []
+    if len(args) >= 1 and args[0].isdigit():
+        limit = int(args[0])
+    if len(args) >= 2 and args[1].isdigit():
+        page = int(args[1])
 
     cache_key = ("rank", limit, page)
     has_cache = shared.service.get_rank_cache(cache_key) is not None

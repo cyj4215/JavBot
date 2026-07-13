@@ -51,7 +51,7 @@ def _fetch(url: str) -> str | None:
     if _HAS_CURL_CFFI:
         try:
             resp = curl_requests.get(url, impersonate="chrome131", timeout=_CURL_TIMEOUT)
-            return resp.text
+            return resp.text  # type: ignore[no-any-return]
         except Exception as e:
             logger.warning("curl_cffi failed: %s, falling back to subprocess curl", e)
     return _curl_get(url)
@@ -100,15 +100,15 @@ def _parse_actor_search(html: str) -> list[ActorSearchResult]:
         if strong:
             name = strong.get_text(strip=True)
         if not name:
-            name = a_tag.get("title", "").strip()
+            name = str(a_tag.get("title", "")).strip()
 
-        href = a_tag.get("href", "")
+        href = str(a_tag.get("href", ""))
         actor_url = f"https://javdb.com{href}" if href and not href.startswith("http") else href
 
         img = ""
         img_tag = box.find("img")
         if img_tag:
-            img = img_tag.get("src", img_tag.get("data-src", ""))
+            img = str(img_tag.get("src", img_tag.get("data-src", "")))
             if img and not img.startswith("http"):
                 img = f"https://javdb.com{img}"
 
@@ -159,11 +159,11 @@ def _parse_movie_list(html: str, limit: int = 10) -> list[JavDbWork]:
                     date = date_match.group(1)
 
             img_tag = item.find("img")
-            img = img_tag.get("src", "") if img_tag else ""
+            img = str(img_tag.get("src", "")) if img_tag else ""
             if not img:
-                img = img_tag.get("data-src", "") if img_tag else ""
+                img = str(img_tag.get("data-src", "")) if img_tag else ""
 
-            url = item.get("href", "")
+            url = str(item.get("href", ""))
             if url and not url.startswith("http"):
                 url = f"https://javdb.com{url}"
 

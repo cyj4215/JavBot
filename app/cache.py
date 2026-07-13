@@ -67,7 +67,7 @@ class TTLCache:
         except Exception:
             pass
 
-    def get(self, key) -> Any:
+    def get(self, key: Any) -> Any:
         now = time.time()
         with self._lock:
             item = self._data.get(key)
@@ -81,7 +81,7 @@ class TTLCache:
             self._data.move_to_end(key)
             return value
 
-    def set(self, key, value, ttl: int | None = None):
+    def set(self, key: Any, value: Any, ttl: int | None = None) -> None:
         expire_at = time.time() + (ttl if ttl is not None else self.default_ttl)
         with self._lock:
             if key in self._data:
@@ -92,7 +92,7 @@ class TTLCache:
             self._dirty = True
         self._save()
 
-    def delete(self, key) -> None:
+    def delete(self, key: Any) -> None:
         with self._lock:
             self._data.pop(key, None)
             self._dirty = True
@@ -125,16 +125,16 @@ class TTLCache:
         """Force save to disk."""
         self._save()
 
-    def __contains__(self, key) -> bool:
+    def __contains__(self, key: Any) -> bool:
         return self.get(key) is not None
 
-    def __getitem__(self, key) -> Any:
+    def __getitem__(self, key: Any) -> Any:
         value = self.get(key)
         if value is None:
             raise KeyError(key)
         return value
 
-    def __setitem__(self, key, value) -> None:
+    def __setitem__(self, key: Any, value: Any) -> None:
         self.set(key, value)
 
     def __len__(self) -> int:

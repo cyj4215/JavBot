@@ -39,7 +39,7 @@ class I18nService:
     def __init__(self, default_lang: str = _LANG_ZH):
         self._default_lang = default_lang if default_lang in SUPPORTED_LANGUAGES else _LANG_ZH
 
-    def t(self, key: str, lang: str | None = None, *args) -> str:
+    def t(self, key: str, lang: str | None = None, *args: str) -> str:
         """Translate a key to the given language, with optional positional format args.
 
         Fallback chain: requested lang → default lang → key itself.

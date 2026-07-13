@@ -207,7 +207,7 @@ class SecureCallbackStore:
         if len(key) != 8:
             return False
 
-        return re.match(r"^[0-9a-f]{8}$", key, re.IGNORECASE)
+        return re.match(r"^[0-9a-f]{8}$", key, re.IGNORECASE) is not None
 
     def get_stats(self) -> dict:
         with self._lock:

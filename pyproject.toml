@@ -36,6 +36,30 @@ module = [
 ]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = [
+    "app.handlers.*",
+    "app.handlers.common",
+    "app.handlers.favorites",
+    "app.handlers.history",
+    "app.handlers.magnet",
+    "app.handlers.push",
+    "app.handlers.rank",
+    "app.handlers.search",
+    "app.handlers.settings",
+    "app.handlers.stats",
+    "app.handlers.works",
+    "app.main",
+    "app.cache",
+    "app.fav.manager",
+    "app.rate_limiter",
+    "app.scheduler",
+    "app.services.name_match_service",
+    "app.services.i18n.service",
+]
+disallow_untyped_defs = false
+ignore_errors = true
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

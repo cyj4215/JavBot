@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import logging
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, cast
 
 from telegram import InlineKeyboardMarkup, Message, Update
@@ -111,9 +112,13 @@ async def send_photo_with_fallback(
         await _send_text()
 
 
-def require_auth(func):
+def require_auth(
+    func: Callable[..., Awaitable[Any]],
+) -> Callable[[Update, ContextTypes.DEFAULT_TYPE], Awaitable[None]]:
     @functools.wraps(func)
-    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+    async def wrapper(
+        update: Update, context: ContextTypes.DEFAULT_TYPE, *args: Any, **kwargs: Any
+    ) -> None:
         from . import _get_shared
 
         shared = _get_shared()
@@ -123,14 +128,18 @@ def require_auth(func):
         if not is_allowed(update, shared.config.allowed_user_ids):
             await msg.reply_text("无权限使用此机器人。")
             return
-        return await func(update, context, msg, shared, *args, **kwargs)
+        await func(update, context, msg, shared, *args, **kwargs)
 
     return wrapper
 
 
-def require_auth_callback(func):
+def require_auth_callback(
+    func: Callable[..., Awaitable[Any]],
+) -> Callable[[Update, ContextTypes.DEFAULT_TYPE], Awaitable[None]]:
     @functools.wraps(func)
-    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+    async def wrapper(
+        update: Update, context: ContextTypes.DEFAULT_TYPE, *args: Any, **kwargs: Any
+    ) -> None:
         from . import _get_shared
 
         shared = _get_shared()

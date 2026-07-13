@@ -97,7 +97,7 @@ class FavoritesManager:
         self._pool = pool
 
     @classmethod
-    async def create(cls, config) -> FavoritesManager:
+    async def create(cls, config: Any) -> FavoritesManager:
         """Create manager with connection pool and initialize tables."""
         pool = await aiomysql.create_pool(
             host=config.mysql_host,
@@ -134,12 +134,12 @@ class FavoritesManager:
     async def _select_one(self, query: str, params: tuple = ()) -> dict[str, Any] | None:
         async with self._pool.acquire() as conn, conn.cursor() as cur:
             await cur.execute(query, params)
-            return await cur.fetchone()
+            return await cur.fetchone()  # type: ignore[no-any-return]
 
     async def _select_all(self, query: str, params: tuple = ()) -> list[dict[str, Any]]:
         async with self._pool.acquire() as conn, conn.cursor() as cur:
             await cur.execute(query, params)
-            return await cur.fetchall()
+            return await cur.fetchall()  # type: ignore[no-any-return]
 
     async def _execute(self, query: str, params: tuple = ()) -> int:
         """Execute a single write query with commit. Returns rowcount."""
@@ -400,7 +400,7 @@ class FavoritesManager:
                     (actress_name, av_id, title, date, url, img),
                 )
                 await conn.commit()
-                return cur.rowcount > 0
+                return cur.rowcount > 0  # type: ignore[no-any-return]
         except Exception as e:
             logger.error(f"记录女优作品失败: {e}")
             return False
@@ -591,7 +591,7 @@ class FavoritesManager:
 _favorites_manager: FavoritesManager | None = None
 
 
-async def get_favorites_manager(config=None) -> FavoritesManager:
+async def get_favorites_manager(config: Any = None) -> FavoritesManager:
     global _favorites_manager
     if _favorites_manager is None:
         if config is None:

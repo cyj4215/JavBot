@@ -95,7 +95,7 @@ class RankService:
         fallback = self._last_good.get(cache_key)
         if fallback:
             logging.info("返回缓存排行榜: page=%d (上次成功的数据)", page)
-            return fallback
+            return list(fallback)
         return []
 
     async def _try_javdb_rankings(self, limit: int, page: int) -> list[ActorSearchResult] | None:
