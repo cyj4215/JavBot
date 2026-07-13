@@ -9,6 +9,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from ..fav import get_favorites_manager
+from ..models import MergedWork
 from ..secure_callback import short_callback as _short_callback
 from .common import require_auth, send_photo_with_fallback
 
@@ -70,17 +71,17 @@ async def check_and_push_new_works(context: ContextTypes.DEFAULT_TYPE) -> None:
 
                     new_works = []
                     for work in profile.latest_works:
-                        av_id = work.get("id")
+                        av_id = work.id
                         if not av_id:
                             continue
                         try:
                             is_new = await favorites_manager.record_actress_work(
                                 actress_name=actress_name,
                                 av_id=av_id,
-                                title=work.get("title"),
-                                date=work.get("date"),
-                                url=work.get("url"),
-                                img=work.get("img"),
+                                title=work.title,
+                                date=work.date,
+                                url=work.url,
+                                img=work.img,
                             )
                             if is_new:
                                 logger.info(f"发现新作品: {actress_name} - {av_id}")
@@ -143,16 +144,16 @@ async def check_and_push_new_works(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def send_new_work_notification(
-    bot: Bot, user_id: int, actress_name: str, work: dict[str, Any]
+    bot: Bot, user_id: int, actress_name: str, work: MergedWork
 ) -> None:
     from . import _get_shared
 
     shared = _get_shared()
     try:
-        av_id = work.get("id", "未知")
-        av_date = work.get("date", "未知")
-        av_title = work.get("title", "")
-        img = work.get("img", "")
+        av_id = work.id or "未知"
+        av_date = work.date or "未知"
+        av_title = work.title or ""
+        img = work.img or ""
 
         lines = [
             "<b>🎉 关注女优更新啦！</b>",

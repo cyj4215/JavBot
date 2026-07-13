@@ -92,8 +92,9 @@ async def _send_rank_result(
             shared = _get_shared()
         cached_stars = shared.service.get_rank_cache(("rank", limit, page))
         if cached_stars:
+            models = [ActorSearchResult.model_validate(s) for s in cached_stars]
             text = (
-                _t("rank_cached") + "\n\n" + format_rankings(cached_stars, page, limit=limit, _t=_t)
+                _t("rank_cached") + "\n\n" + format_rankings(models, page, limit=limit, _t=_t)
             )
             kwargs = dict(
                 text=text,
