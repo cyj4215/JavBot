@@ -197,13 +197,18 @@ class ActressService:
                 if isinstance(w, dict):
                     latest_works_models.append(MergedWork.model_validate(w))
                 else:
-                    latest_works_models.append(w)
+                    latest_works_models.append(
+                        MergedWork(id=w.id, title=w.title, date=w.date, img=w.img, url=w.url)
+                    )
 
         # Merge JavDb works into latest_works (dedup by AV ID), sort newest first
         if not isinstance(javdb_result, Exception) and javdb_result:
             seen_ids = {w.id for w in latest_works_models if w.id}
             for w in javdb_result:
-                merged = MergedWork.model_validate(w) if isinstance(w, dict) else w
+                if isinstance(w, dict):
+                    merged = MergedWork.model_validate(w)
+                else:
+                    merged = MergedWork(id=w.id, title=w.title, date=w.date, img=w.img, url=w.url)
                 if merged.id and merged.id not in seen_ids:
                     seen_ids.add(merged.id)
                     latest_works_models.append(merged)
