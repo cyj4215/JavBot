@@ -33,7 +33,7 @@ async def run_magnet_reply(msg: Message, query: str, shared=None) -> None:
         )
     except Exception as exc:
         logging.getLogger(__name__).warning("获取番号信息超时: %s", exc)
-        av_meta = {}
+        av_meta = None
 
     # Fetch magnets from JavBus + sukebei
     try:
@@ -59,17 +59,17 @@ async def run_magnet_reply(msg: Message, query: str, shared=None) -> None:
         return shared.service.i18n.t(key, lang, *a)
 
     # Send AV detail card if available
-    if av_meta.get("title"):
+    if av_meta and av_meta.title:
         detail_lines = ["<b>🎬 作品详情</b>"]
-        detail_lines.append(f"<b>番号：</b><code>{html.escape(av_meta['id'])}</code>")
-        detail_lines.append(f"<b>标题：</b>{html.escape(av_meta['title'])}")
-        if av_meta.get("date") != "未知":
-            detail_lines.append(f"<b>日期：</b>{html.escape(av_meta['date'])}")
+        detail_lines.append(f"<b>番号：</b><code>{html.escape(av_meta.id)}</code>")
+        detail_lines.append(f"<b>标题：</b>{html.escape(av_meta.title)}")
+        if av_meta.date and av_meta.date != "未知":
+            detail_lines.append(f"<b>日期：</b>{html.escape(av_meta.date)}")
         with contextlib.suppress(Exception):
             await waiting.delete()
         try:
             await send_photo_with_fallback(
-                msg, av_meta.get("img"), "\n".join(detail_lines), shared.config.proxy_addr
+                msg, av_meta.img, "\n".join(detail_lines), shared.config.proxy_addr
             )
         except Exception:
             logging.getLogger(__name__).warning("发送封面图片失败", exc_info=True)
