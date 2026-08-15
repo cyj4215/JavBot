@@ -7,6 +7,14 @@ This module provides a secure way to store callback data with:
 - JSON file persistence for container restarts
 - Dirty flag + delayed save to reduce disk I/O
 - Backward compatibility with old MD5 format (returns empty for security)
+
+Callback security rules:
+- SIGNED callbacks (short_callback/resolve_callback) MUST be used for anything
+  carrying user data or query content (search queries, actress names, AV IDs,
+  magnet links, user IDs). Tokens are single-use and expire after 7 days.
+- PLAIN callbacks are allowed ONLY for UI navigation with no sensitive data
+  (menu:, lang:, hist:page:, myfav:page:, myfav:sort:, rank:, rank_retry:).
+  Never put user data or query strings into a plain callback.
 """
 
 from __future__ import annotations

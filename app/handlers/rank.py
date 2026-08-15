@@ -170,34 +170,19 @@ async def rank_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
     data = q.data or ""
 
-    retry_match = re.match(r"^rank_retry:(\d{1,2}):(\d)$", data)
-    if retry_match:
-        limit = int(retry_match.group(1))
-        page = int(retry_match.group(2))
-        limit = max(1, min(limit, 50))
-        page = max(1, min(page, 5))
-
-        await q.answer(_("rank_retrying"))
-        try:
-            stars = await shared.service.get_hot_star_rankings(limit, page)
-            await _send_rank_result(q, stars, limit, page, is_edit=True, _t=_, shared=shared)
-        except Exception as exc:
-            logger.exception("rank retry failed: %s", exc)
-            await _handle_rank_error(q, limit, page, is_edit=True, _t=_)
-        return
-
-    m = re.match(r"^rank:(\d{1,2}):(\d):([01])$", data)
+    m = re.match(r"^rank(?:_retry)?:(\d{1,2}):(\d)(?::([01]))?$", data)
     if not m:
         await q.answer()
         return
 
     limit = int(m.group(1))
     page = int(m.group(2))
-    with_avatars = m.group(3) == "1"
     limit = max(1, min(limit, 50))
     page = max(1, min(page, 5))
+    is_retry = data.startswith("rank_retry:")
+    with_avatars = m.group(3) == "1" if m.group(3) is not None else False
 
-    await q.answer(_("rank_loading"))
+    await q.answer(_("rank_retrying") if is_retry else _("rank_loading"))
     try:
         stars = await shared.service.get_hot_star_rankings(limit, page)
         await _send_rank_result(
