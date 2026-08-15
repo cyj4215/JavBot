@@ -1,5 +1,6 @@
 """Unit tests for formatters — extended with profile keyboard callback tests."""
 from datetime import datetime
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
@@ -185,10 +186,11 @@ class TestFormatProfileKeyboard:
                 assert not btn.callback_data.startswith("works:")
                 assert not btn.callback_data.startswith("favnow:")
 
+
 class TestFormatPushNotification:
     """format_push_notification: caption layout, tags, buttons, escaping."""
 
-    _LABELS = {
+    _LABELS: ClassVar[dict[str, str]] = {
         "push_title": "NEW",
         "push_unknown": "?",
         "push_actress_tag": "👩 {}",
@@ -213,10 +215,13 @@ class TestFormatPushNotification:
         assert "<blockquote>Test Title</blockquote>" in caption
         assert "<code>👩 TestActress</code>" in caption
         assert "<code>📅 2026-07-01</code>" in caption
+        assert "<code>👩 TestActress</code>　<code>📅 2026-07-01</code>" in caption
         row = keyboard.inline_keyboard[0]
         assert len(row) == 3
         detail = next(b for b in row if b.text == "DETAIL")
         assert detail.url == "https://example.com/work/TEST-001"
+        assert any(b.callback_data.startswith("magnet:") for b in row)
+        assert any(b.callback_data.startswith("favquery:") for b in row)
 
     def test_missing_title_and_date(self):
         work = MergedWork(id="TEST-002")
@@ -227,6 +232,11 @@ class TestFormatPushNotification:
 
     def test_unknown_date_sentinel_omitted(self):
         work = MergedWork(id="TEST-003", date="未知")
+        caption, _ = format_push_notification("TestActress", work, _t=self._t)
+        assert "📅" not in caption
+
+    def test_empty_date_omitted(self):
+        work = MergedWork(id="TEST-007", date="")
         caption, _ = format_push_notification("TestActress", work, _t=self._t)
         assert "📅" not in caption
 
