@@ -6,7 +6,8 @@ import pytest
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.formatters import format_profile, format_rankings, build_rank_keyboard, looks_like_av_id
-from app.models import ActorSearchResult, ActressProfile, WikiExtra
+from app.formatters.push import format_push_notification
+from app.models import ActorSearchResult, ActressProfile, MergedWork, WikiExtra
 
 
 class TestLooksLikeAvId:
@@ -183,3 +184,75 @@ class TestFormatProfileKeyboard:
             for btn in row:
                 assert not btn.callback_data.startswith("works:")
                 assert not btn.callback_data.startswith("favnow:")
+
+class TestFormatPushNotification:
+    """format_push_notification: caption layout, tags, buttons, escaping."""
+
+    _LABELS = {
+        "push_title": "NEW",
+        "push_unknown": "?",
+        "push_actress_tag": "👩 {}",
+        "push_date_tag": "📅 {}",
+        "push_detail_btn": "DETAIL",
+        "search_magnet_for": "MAG {}",
+        "push_query_btn": "Q {}",
+    }
+
+    def _t(self, key, *a):
+        val = self._LABELS.get(key, key)
+        return val.format(*a) if a else val
+
+    def test_full_work(self):
+        work = MergedWork(
+            id="TEST-001", title="Test Title", date="2026-07-01",
+            img="", url="https://example.com/work/TEST-001",
+        )
+        caption, keyboard = format_push_notification("TestActress", work, _t=self._t)
+        assert caption.startswith("NEW")
+        assert "<b>🎬 <code>TEST-001</code></b>" in caption
+        assert "<blockquote>Test Title</blockquote>" in caption
+        assert "<code>👩 TestActress</code>" in caption
+        assert "<code>📅 2026-07-01</code>" in caption
+        row = keyboard.inline_keyboard[0]
+        assert len(row) == 3
+        detail = next(b for b in row if b.text == "DETAIL")
+        assert detail.url == "https://example.com/work/TEST-001"
+
+    def test_missing_title_and_date(self):
+        work = MergedWork(id="TEST-002")
+        caption, keyboard = format_push_notification("TestActress", work, _t=self._t)
+        assert "<blockquote>" not in caption
+        assert "📅" not in caption
+        assert len(keyboard.inline_keyboard[0]) == 2
+
+    def test_unknown_date_sentinel_omitted(self):
+        work = MergedWork(id="TEST-003", date="未知")
+        caption, _ = format_push_notification("TestActress", work, _t=self._t)
+        assert "📅" not in caption
+
+    def test_no_url_means_no_detail_button(self):
+        work = MergedWork(id="TEST-004", url="")
+        _, keyboard = format_push_notification("TestActress", work, _t=self._t)
+        row = keyboard.inline_keyboard[0]
+        assert len(row) == 2
+        assert all(b.url is None for b in row)
+
+    def test_html_escaping(self):
+        work = MergedWork(
+            id="TEST-005", title="<script>alert(1)</script>", date="2026-01-01",
+        )
+        caption, _ = format_push_notification("A&B", work, _t=self._t)
+        assert "<script>" not in caption
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in caption
+        assert "A&amp;B" in caption
+
+    def test_missing_id_uses_push_unknown(self):
+        work = MergedWork(id="")
+        caption, _ = format_push_notification("TestActress", work, _t=self._t)
+        assert "<code>?</code>" in caption
+
+    def test_long_title_truncated_to_200(self):
+        work = MergedWork(id="TEST-006", title="X" * 500)
+        caption, _ = format_push_notification("TestActress", work, _t=self._t)
+        assert "<blockquote>" + "X" * 200 + "</blockquote>" in caption
+
