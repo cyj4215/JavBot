@@ -9,6 +9,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from ..fav import get_favorites_manager
+from ..formatters import looks_like_av_id
 from ..secure_callback import short_callback as _short_callback
 from .common import require_auth
 
@@ -54,8 +55,13 @@ def _render_history_page(
     for q in page_queries:
         name = q["actress_name"]
         btn_label = name[:14] + "…" if len(name) > 14 else name
+        prefix = "magnet" if looks_like_av_id(name) else "search"
         keyboard.append(
-            [InlineKeyboardButton(f"🔍 {btn_label}", callback_data=_short_callback("search", name))]
+            [
+                InlineKeyboardButton(
+                    f"🔍 {btn_label}", callback_data=_short_callback(prefix, name)
+                )
+            ]
         )
 
     nav_row = []

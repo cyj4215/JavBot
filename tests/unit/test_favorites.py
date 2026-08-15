@@ -154,3 +154,18 @@ async def test_record_user_work_same_av_different_user(manager):
     params = cursor.execute.call_args[0][1]
     assert "user_seen_works" in sql
     assert params == (456, "SSIS-123", "河北彩花")
+
+
+@pytest.mark.asyncio
+async def test_record_favorite_query_dedup_skip(manager):
+    """24h 内同用户同名字已有记录 → 跳过。"""
+    manager._select_one = AsyncMock(return_value={"val": 1})
+    assert await manager.record_favorite_query(123, "河北彩花") is False
+
+
+@pytest.mark.asyncio
+async def test_record_favorite_query_insert(manager):
+    """无重复记录 → 插入并返回 True。"""
+    manager._select_one = AsyncMock(return_value=None)
+    manager._execute = AsyncMock(return_value=1)
+    assert await manager.record_favorite_query(123, "河北彩花") is True

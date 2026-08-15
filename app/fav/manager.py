@@ -13,8 +13,7 @@ import aiomysql
 
 logger = logging.getLogger(__name__)
 
-QUERY_FREQUENCY_LIMIT = 10
-QUERY_FREQUENCY_WINDOW = 3600
+QUERY_DEDUP_WINDOW = 86400  # 同一用户同一名字 24h 内只记录一次
 
 _SQL_INIT = [
     """
@@ -321,22 +320,19 @@ class FavoritesManager:
     # Favorite queries tracking
     # ------------------------------------------------------------------
 
-    async def _is_query_rate_limited(self, user_id: int, actress_name: str) -> bool:
-        window_start = (datetime.now() - timedelta(seconds=QUERY_FREQUENCY_WINDOW)).isoformat()
-        row = await self._select_one(
-            """
-            SELECT COUNT(*) AS cnt FROM favorite_queries
-            WHERE user_id = %s AND actress_name = %s AND query_time > %s
-            """,
-            (user_id, actress_name, window_start),
-        )
-        count = row["cnt"] if row else 0
-        return count >= QUERY_FREQUENCY_LIMIT
-
     async def record_favorite_query(self, user_id: int, actress_name: str) -> bool:
+        """记录一次搜索。同用户同名字 24h 内已有记录则跳过（去重）。"""
         try:
-            if await self._is_query_rate_limited(user_id, actress_name):
-                logger.debug(f"用户 {user_id} 查询 {actress_name} 超过频率限制，跳过记录")
+            window_start = (datetime.now() - timedelta(seconds=QUERY_DEDUP_WINDOW)).isoformat()
+            existing = await self._select_one(
+                """
+                SELECT 1 AS val FROM favorite_queries
+                WHERE user_id = %s AND actress_name = %s AND query_time > %s
+                LIMIT 1
+                """,
+                (user_id, actress_name, window_start),
+            )
+            if existing:
                 return False
             await self._execute(
                 "INSERT INTO favorite_queries (user_id, actress_name) VALUES (%s, %s)",

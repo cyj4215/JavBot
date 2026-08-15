@@ -326,4 +326,5 @@ async def callback_magnet(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await q.answer(_("fav_expired"), show_alert=True)
         return
     await q.answer(f"🧲 {query}")
-    await run_magnet_reply(cast(Message, q.message), query, shared=shared)
+    user_id: int | None = update.effective_user.id if update.effective_user else None
+    await run_magnet_reply(cast(Message, q.message), query, shared=shared, user_id=user_id)

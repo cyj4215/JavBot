@@ -11,13 +11,16 @@ from telegram.ext import ContextTypes
 
 from ..formatters import format_magnet_messages
 from ..secure_callback import resolve_callback as _resolve_callback
+from ..services.text_utils import normalize_name
 from .common import require_auth, require_auth_callback, send_photo_with_fallback
 
 if TYPE_CHECKING:
     from telegram import Message, Update
 
 
-async def run_magnet_reply(msg: Message, query: str, shared=None) -> None:
+async def run_magnet_reply(
+    msg: Message, query: str, shared=None, user_id: int | None = None
+) -> None:
     if shared is None:
         from . import _get_shared
 
@@ -50,6 +53,8 @@ async def run_magnet_reply(msg: Message, query: str, shared=None) -> None:
     try:
         fav_mgr = await get_favorites_manager()
         await fav_mgr.increment_stat("total_magnet_searches")
+        if user_id is not None:
+            await fav_mgr.record_favorite_query(user_id, normalize_name(query))
     except Exception:
         pass
 
@@ -97,7 +102,8 @@ async def magnet_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, sh
     if not query:
         await msg.reply_text("用法：/search 关键词\n例如：/search SSIS-123")
         return
-    await run_magnet_reply(msg, query, shared=shared)
+    user = update.effective_user
+    await run_magnet_reply(msg, query, shared=shared, user_id=user.id if user else None)
 
 
 @require_auth_callback

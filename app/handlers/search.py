@@ -19,6 +19,7 @@ from ..formatters import format_profile, looks_like_av_id
 from ..models import MergedWork
 from ..secure_callback import resolve_callback as _resolve_callback
 from ..secure_callback import short_callback as _short_callback
+from ..services.text_utils import normalize_name
 from .common import make_t, require_auth, require_auth_callback
 
 _pending_queries: dict[int, asyncio.Task] = {}
@@ -111,6 +112,13 @@ async def run_search_reply(
         is_fav = False
         if profile.found and profile.star_name is not None and user_id is not None:
             is_fav = await fav_mgr.is_favorite(user_id, profile.star_name)
+
+        if user_id is not None:
+            try:
+                await fav_mgr.record_favorite_query(user_id, normalize_name(query))
+            except Exception:
+                logging.getLogger(__name__).debug("记录搜索历史失败", exc_info=True)
+
         base_text, keyboard = format_profile(
             profile, user_id, is_favorite=is_fav, _t=_, back_data=back_data
         )
@@ -205,12 +213,13 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE, msg: Messa
     if not query:
         return
 
+    user: Any | None = update.effective_user
+    user_id = user.id if user else None
     if looks_like_av_id(query):
-        await run_magnet_reply(msg, query, shared=shared)
+        await run_magnet_reply(msg, query, shared=shared, user_id=user_id)
         return
 
-    user: Any | None = update.effective_user
-    await run_search_reply(msg, query, user.id if user else None, shared=shared)
+    await run_search_reply(msg, query, user_id, shared=shared)
 
 
 @require_auth_callback

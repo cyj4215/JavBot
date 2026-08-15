@@ -1,4 +1,6 @@
 """Tests for search handler: cancel_search_callback."""
+from unittest.mock import AsyncMock
+
 import pytest
 
 from app.handlers.search import run_search_reply
@@ -63,3 +65,30 @@ def _add_dummy_pending_task(uid: int):
     task.cancel()
     _pending_queries[uid] = task
     return task
+
+
+class TestRunSearchReplyRecordsHistory:
+    """run_search_reply 成功后记录搜索历史。"""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, shared_global, monkeypatch):
+        import app.handlers.search as search_mod
+        self._fav_mgr = AsyncMock()
+        self._fav_mgr.get_user_language.return_value = "zh_CN"
+        self._fav_mgr.is_favorite = AsyncMock(return_value=False)
+        self._fav_mgr.record_favorite_query = AsyncMock(return_value=True)
+        self._fav_mgr.increment_stat = AsyncMock()
+        monkeypatch.setattr(
+            search_mod, "get_favorites_manager", AsyncMock(return_value=self._fav_mgr)
+        )
+        self._svc = shared_global.service
+        self._svc.query_profile_async.return_value = ActressProfile(
+            found=True, query="三上悠亜", star_name="三上悠亜", star_id="X"
+        )
+        shared_global.config.send_latest_covers = False
+
+    @pytest.mark.asyncio
+    async def test_records_query_after_success(self, mock_msg):
+        from app.handlers.search import run_search_reply
+        await run_search_reply(mock_msg, "三上悠亜", user_id=12345)
+        self._fav_mgr.record_favorite_query.assert_awaited_once_with(12345, "三上悠亜")
