@@ -78,8 +78,9 @@ async def run_magnet_reply(
         detail_kb: list[list[InlineKeyboardButton]] = []
         if av_meta.stars:
             first_star = av_meta.stars[0]
-            stars_text = html.escape("、".join(av_meta.stars[:5]))
-            detail_lines.append(f"<b>{_('magnet_stars')}</b>{stars_text}")
+            detail_lines.append(
+                f"<b>{_('magnet_stars', html.escape('、'.join(av_meta.stars[:5])))}</b>"
+            )
             detail_kb.append(
                 [
                     InlineKeyboardButton(

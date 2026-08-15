@@ -95,9 +95,11 @@ class JavBusService:
             if isinstance(value, str) and value.strip():
                 stars.append(value.strip())
             elif isinstance(value, list):
-                stars.extend(
-                    str(v).strip() for v in value if str(v).strip() and str(v).strip() not in stars
-                )
+                for v in value:
+                    if isinstance(v, str):
+                        s = v.strip()
+                        if s and s not in stars:
+                            stars.append(s)
             if stars:
                 break
         return stars

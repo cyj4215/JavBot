@@ -58,7 +58,7 @@ TRANSLATIONS: dict[str, str] = {
     "magnet_av_id_label": "AV ID:",
     "magnet_title_label": "Title:",
     "magnet_date_label": "Date:",
-    "magnet_stars": "👩 Stars: ",
+    "magnet_stars": "👩 Stars: {}",
     "magnet_view_actress": "👩 View actress profile",
     "magnet_open_javbus": "🌐 View on JavBus",
     "rank_title": "🏆 Top Actresses Ranking",

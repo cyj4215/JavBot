@@ -42,3 +42,24 @@ def test_meta_no_stars():
     svc = _make_service({"date": "", "img": "", "url": "", "title": ""})
     work = svc.get_av_meta("SSIS-123")
     assert work.stars == []
+
+
+def test_meta_extracts_stars_falls_through_empty_star_name():
+    """star_name 为空时回退到 stars 列表。"""
+    svc = _make_service({
+        "date": "", "img": "", "url": "", "title": "",
+        "star_name": "",
+        "stars": ["A", "B"],
+    })
+    work = svc.get_av_meta("SSIS-123")
+    assert work.stars == ["A", "B"]
+
+
+def test_meta_extracts_stars_ignores_non_str_items():
+    """列表中的 None/数字元素被忽略，不产生 'None' 字符串。"""
+    svc = _make_service({
+        "date": "", "img": "", "url": "", "title": "",
+        "stars": ["A", None, "B", 42, "A"],
+    })
+    work = svc.get_av_meta("SSIS-123")
+    assert work.stars == ["A", "B"]
