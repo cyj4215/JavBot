@@ -103,7 +103,7 @@ app/
 - **Scheduler**: `scheduled_cleanup()` via `Application.job_queue` daily. Purges `favorite_queries` >90 days, optimizes MySQL tables. Rank background refresh starts in `post_init` lifecycle hook.
 - **Works browser**: `handlers/works.py` — inline gallery paginated via secure callbacks. Works merged from JavBus (latest) + JavDb (top), deduped by AV ID, sorted by date desc.
 - **Favorites on-by-default for push**: `push_enabled_global` defaults to `1`.
-- **Push dedup & modes**: `user_seen_works` dedups work pushes by `(user_id, av_id)`; `actress_works` stays as the work-info store / backfill source. `user_push_settings.push_mode` is planned as `instant`/`digest`/`off` (docs-first — not yet implemented).
+- **Push dedup & modes**: `user_seen_works` dedups work pushes by `(user_id, av_id)`; `actress_works` stays as the work-info store / backfill source. `user_push_settings.push_mode` is `instant`/`digest`/`off` — instant sends immediately, digest accumulates into a daily in-memory summary (`_digest_queue`, sent by `check_and_send_digests`), off skips checks.
 
 ## External data sources
 
