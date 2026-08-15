@@ -247,6 +247,13 @@ class TestFormatPushNotification:
         assert len(row) == 2
         assert all(b.url is None for b in row)
 
+    def test_invalid_url_no_detail_button(self):
+        work = MergedWork(id="TEST-008", url="javascript:alert(1)")
+        _, keyboard = format_push_notification("TestActress", work, _t=self._t)
+        row = keyboard.inline_keyboard[0]
+        assert len(row) == 2
+        assert all(b.url is None for b in row)
+
     def test_html_escaping(self):
         work = MergedWork(
             id="TEST-005", title="<script>alert(1)</script>", date="2026-01-01",

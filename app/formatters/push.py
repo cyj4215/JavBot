@@ -44,7 +44,7 @@ def format_push_notification(
             callback_data=_short_callback("favquery", actress_name),
         ),
     ]
-    if work.url:
+    if work.url and work.url.startswith(("http://", "https://")) and len(work.url) <= 256:
         row.append(InlineKeyboardButton(_t("push_detail_btn"), url=work.url))
 
     return "\n".join(lines), InlineKeyboardMarkup([row])
