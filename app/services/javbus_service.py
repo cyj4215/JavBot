@@ -131,9 +131,7 @@ class JavBusService:
             )
 
         magnet_search = self._magnet_search if self._magnet_search is not None else MagnetSearch()
-        sukebei_magnets = magnet_search.search(
-            av_id, max(0, limit - len(javbus_magnets)), 20
-        )
+        sukebei_magnets = magnet_search.search(av_id, max(0, limit - len(javbus_magnets)), 20)
 
         seen: set = set()
         result: list[MagnetLink] = []

@@ -58,11 +58,7 @@ def _render_history_page(
         btn_label = name[:14] + "…" if len(name) > 14 else name
         prefix = "magnet" if looks_like_av_id(name) else "search"
         keyboard.append(
-            [
-                InlineKeyboardButton(
-                    f"🔍 {btn_label}", callback_data=_short_callback(prefix, name)
-                )
-            ]
+            [InlineKeyboardButton(f"🔍 {btn_label}", callback_data=_short_callback(prefix, name))]
         )
 
     nav_row = []

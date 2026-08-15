@@ -54,7 +54,7 @@ def _fetch(url: str) -> str | None:
             from ..health import SourceStatus
 
             SourceStatus.ok("javdb")
-            return resp.text  # type: ignore[no-any-return]
+            return resp.text
         except Exception as e:
             logger.warning("curl_cffi failed: %s, falling back to subprocess curl", e)
     result = _curl_get(url)

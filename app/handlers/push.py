@@ -188,7 +188,8 @@ async def send_new_work_notification(
             [
                 [
                     InlineKeyboardButton(
-                        _("search_magnet_for", av_id), callback_data=_short_callback("magnet", av_id)
+                        _("search_magnet_for", av_id),
+                        callback_data=_short_callback("magnet", av_id),
                     )
                 ],
                 [
@@ -235,16 +236,8 @@ async def push_toggle_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, ms
                         _("push_mode_instant_btn"), callback_data="pushmode:instant"
                     )
                 ],
-                [
-                    InlineKeyboardButton(
-                        _("push_mode_digest_btn"), callback_data="pushmode:digest"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        _("push_mode_off_btn"), callback_data="pushmode:off"
-                    )
-                ],
+                [InlineKeyboardButton(_("push_mode_digest_btn"), callback_data="pushmode:digest")],
+                [InlineKeyboardButton(_("push_mode_off_btn"), callback_data="pushmode:off")],
             ]
         )
         await msg.reply_text(status_text, reply_markup=keyboard)
@@ -281,8 +274,10 @@ async def push_mode_callback(update: Update, context: ContextTypes.DEFAULT_TYPE,
     fav_mgr = await get_favorites_manager()
     await fav_mgr.set_push_mode(update.effective_user.id, mode)
     mode_label = _(
-        "push_mode_instant_btn" if mode == "instant"
-        else "push_mode_digest_btn" if mode == "digest"
+        "push_mode_instant_btn"
+        if mode == "instant"
+        else "push_mode_digest_btn"
+        if mode == "digest"
         else "push_mode_off_btn"
     )
     await q.answer(_("push_mode_set", mode_label))
