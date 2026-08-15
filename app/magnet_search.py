@@ -8,7 +8,6 @@ Usage:
 from __future__ import annotations
 
 import logging
-import os
 
 from bs4 import BeautifulSoup
 
@@ -18,7 +17,7 @@ from .models.magnets import MagnetLink
 BASE_URL = "https://sukebei.nyaa.si"
 DEFAULT_TIMEOUT = 20
 DEFAULT_LIMIT = 5
-DEFAULT_CACHE_TTL = int(os.getenv("MAGNET_CACHE_TTL", "300"))
+DEFAULT_CACHE_TTL = 300
 DEFAULT_CACHE_SIZE = 512
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 

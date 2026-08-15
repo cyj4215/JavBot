@@ -90,6 +90,7 @@ docker compose up -d --build
 | `/history` | - | 最近搜索历史 |
 | `/stats` | - | 使用统计 |
 | `/language` | - | 切换界面语言 |
+| `/admin` | - | 健康检查（仅管理员） |
 
 ## 架构
 
@@ -98,40 +99,31 @@ app/
 ├── main.py                  # 入口：构建 Application，注册 handler，启动轮询
 ├── config.py                # BotConfig 数据类，所有配置来自环境变量
 ├── service.py               # ActressService 门面，协调各子服务
-├── models.py                # ActressProfile 数据类
+├── health.py                # 健康检查：数据源状态、错误日志环形缓冲、报告生成
+│
+├── models/                  # Pydantic v2 模型（profile/works/actors/magnets/wiki/favorites）
+├── formatters/              # HTML 消息构建（profile/magnets/favorites/rankings）
+├── fav/                     # 收藏数据层（manager.py：MySQL CRUD + 推送去重）
 │
 ├── services/
-│   ├── wiki_service.py      # Wikipedia/Wikidata 资料 (bio、社交链接)
+│   ├── wiki_service.py      # Wikipedia/Wikidata 资料（bio、社交链接）
 │   ├── javbus_service.py    # JavBus 作品 & 磁力 (jvav 库)
-│   ├── javdb_scraper.py     # JavDb 爬虫 (subprocess curl 绕过 Cloudflare)
-│   ├── rank_service.py      # JavDb 排行榜 (curl 子进程) + 后台缓存刷新
+│   ├── javdb_scraper.py     # JavDb 爬虫（curl_cffi + subprocess curl fallback）
+│   ├── rank_service.py      # JavDb 排行榜 + 后台预热
 │   ├── resolver.py          # ProfileResolver: 名称解析
 │   ├── name_match_service.py# 模糊匹配、简繁转换 (OpenCC, pypinyin)
-│   ├── i18n_service.py      # 多语言翻译 (zh_CN/en_US/ja_JP)
-│   └── text_utils.py        # HTML 文本工具
+│   ├── i18n/                # 多语言 (zh_CN/en_US/ja_JP)
+│   └── text_utils.py        # Unicode 规范化、CJK 检测
 │
-├── handlers/
-│   ├── __init__.py          # 共享状态 _SharedState
-│   ├── common.py            # @require_auth, start/help/menu
-│   ├── search.py            # /s, 自由文本处理
-│   ├── magnet.py            # /search /magnet /m
-│   ├── favorites.py         # /fav /unfav /myfav /favlatest /exportfav
-│   ├── rank.py              # /rank + 分页回调
-│   ├── push.py              # /push + 后台推送
-│   ├── history.py           # /history 搜索历史
-│   ├── settings.py          # /language 语言设置
-│   └── stats.py             # /stats 使用统计
-│
-├── fav_manager.py           # FavoritesManager: MySQL 异步 CRUD
-├── cache.py                 # TTLCache: 线程安全 TTL 缓存 + JSON 持久化
-├── rate_limiter.py          # 令牌桶限流器
-├── http_utils.py            # requests Session 工厂 (重试 + 连接池)
+├── handlers/                # Telegram 更新处理器（common/search/magnet/favorites/
+│                            #   rank/push/history/settings/stats/works/admin）
+├── cache.py                 # TTLCache：线程安全 TTL 缓存 + JSON 持久化
 ├── magnet_search.py         # sukebei.nyaa.si 磁力搜索
-├── secure_callback.py       # HMAC-SHA256 签名回调数据
-├── scheduler.py             # 定时任务 (数据清理)
-├── improved_utils.py        # 图片下载 (requests + curl 子进程)
-├── formatters.py            # HTML 消息格式化 (profile, magnet, rankings)
-└── config.py                # 配置
+├── secure_callback.py       # HMAC-SHA256 签名回调（含明文导航回调规范）
+├── rate_limiter.py          # 令牌桶限流器
+├── scheduler.py             # 定时任务（数据清理）
+├── improved_utils.py        # 图片下载（requests + curl 子进程）
+└── models.py                # （已拆分至 models/ 包）
 ```
 
 ### 数据源
@@ -139,9 +131,9 @@ app/
 | 数据源 | 用途 | 访问方式 |
 |--------|------|----------|
 | **JavBus** | 女优搜索、作品元数据、磁力 | `jvav` 库 |
-| **JavDb** | 作品列表、热门排行 | curl 子进程 (绕过 Cloudflare JA3) |
+| **JavDb** | 作品列表、热门排行 | curl_cffi + curl 子进程 (绕过 Cloudflare JA3) |
 | **Wikipedia/Wikidata** | 个人资料、社交链接 | `wikipediaapi` 库 + 直接 API |
-| **sukebei.nyaa.si** | 磁力链接 | requests + BeautifulSoup |
+| **sukebei.nyaa.si** | 磁力链接 | httpx + BeautifulSoup |
 
 ### 为什么用 curl 而不是 Python requests 访问 JavDb？
 
@@ -150,7 +142,7 @@ JavDb 使用了 Cloudflare Bot Management，它会检测 TLS 指纹（JA3）:
 - Python 的 OpenSSL/urllib3 → 被屏蔽
 - Playwright 的 BoringSSL → 被屏蔽
 
-方案: `subprocess curl` + 浏览器 User-Agent 头部，通过 `asyncio.to_thread` 异步调用。
+方案: 优先使用 `curl_cffi`（模拟浏览器 TLS 指纹），失败时回退 `subprocess curl` + 浏览器 User-Agent 头部，通过 `asyncio.to_thread` 异步调用。
 
 ## 配置说明
 
@@ -185,6 +177,8 @@ JavDb 使用了 Cloudflare Bot Management，它会检测 TLS 指纹（JA3）:
 | `PROFILE_CACHE_TTL` | | `1800` | 女优资料缓存 TTL (秒) |
 | `PUSH_ENABLED` | | `1` | 开启新作推送功能 |
 | `PUSH_CHECK_INTERVAL` | | `3600` | 推送检查间隔 (秒) |
+| `PUSH_BATCH_DELAY` | | `5` | 推送批次间延迟（秒） |
+| `MAGNET_CACHE_TTL` | | `300` | 磁力搜索缓存 TTL（秒） |
 
 ## 开发
 

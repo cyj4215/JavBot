@@ -47,18 +47,22 @@ app/
 ├── main.py              # Entry: builds telegram.ext.Application, registers handlers, starts polling
 ├── config.py            # BotConfig dataclass — all settings from env vars
 ├── service.py           # ActressService facade — coordinates sub-services for profile queries
-├── models/              # Pydantic v2 models (ActressProfile, JavBusWork, MergedWork, etc.)
-├── formatters/          # HTML message builders (profile, magnets, rankings, favorites)
-├── fav/                 # Favorites CRUD, push service, export (MySQL via aiomysql)
+├── health.py            # Health check: data source status, error-log ring buffer, report generation
+│
+├── models/              # Pydantic v2 models (profile/works/actors/magnets/wiki/favorites)
+├── formatters/          # HTML message builders (profile/magnets/favorites/rankings)
+├── fav/                 # Favorites data layer (manager.py: MySQL CRUD + per-user push dedup)
+│
 ├── services/            # Sub-services called by ActressService (one per data source)
-│   ├── wiki/                 # Wikipedia/Wikidata info extraction (bio, social links)
-│   ├── javbus_service.py     # AV metadata & magnets via jvav library
-│   ├── javdb_scraper.py      # JavDb scraper (curl subprocess, Cloudflare bypass)
-│   ├── rank_service.py       # JavDb rankings via curl-based scraper + background refresh
-│   ├── resolver.py           # ProfileResolver: name resolution (candidates → star)
-│   ├── name_match_service.py # Fuzzy name matching, CJK conversion (OpenCC, pypinyin)
-│   ├── i18n/                 # Multi-language i18n (zh_CN/en_US/ja_JP)
-│   └── text_utils.py         # Unicode normalization, CJK detection
+│   ├── wiki_service.py      # Wikipedia/Wikidata info extraction (bio, social links)
+│   ├── javbus_service.py    # AV metadata & magnets via jvav library
+│   ├── javdb_scraper.py     # JavDb scraper (curl_cffi + subprocess curl fallback)
+│   ├── rank_service.py      # JavDb rankings + background refresh
+│   ├── resolver.py          # ProfileResolver: name resolution (candidates → star)
+│   ├── name_match_service.py# Fuzzy name matching, CJK conversion (OpenCC, pypinyin)
+│   ├── i18n/                # Multi-language i18n (zh_CN/en_US/ja_JP)
+│   └── text_utils.py        # Unicode normalization, CJK detection
+│
 ├── handlers/            # Telegram update handlers
 │   ├── __init__.py          # Shared state: _set_shared(config, service) / _get_shared()
 │   ├── common.py            # @require_auth decorator, start/help/menu, send_photo_with_fallback
@@ -70,15 +74,16 @@ app/
 │   ├── history.py           # /history — recent search history
 │   ├── works.py             # Interactive works browser (inline gallery)
 │   ├── settings.py          # /language — language preference
-│   └── stats.py             # /stats — usage statistics
-├── fav/                 # Favorites CRUD, push service, export (MySQL via aiomysql)
+│   ├── stats.py             # /stats — usage statistics
+│   └── admin.py             # /admin — health check (admin only)
+│
 ├── cache.py             # TTLCache: thread-safe OrderedDict with per-key TTL + JSON persistence
+├── magnet_search.py     # sukebei.nyaa.si magnet search (httpx + BeautifulSoup)
+├── secure_callback.py   # HMAC-SHA256 signed callback tokens (incl. plaintext navigation callbacks)
 ├── rate_limiter.py      # Token-bucket rate limiter (thread-safe, sync+async)
-├── improved_utils.py    # Image download with retry + Referer headers (JavBus) + curl subprocess (JavDb)
-├── magnet_search.py     # sukebei.nyaa.si scraper for magnet links (requests + BeautifulSoup)
-├── secure_callback.py   # HMAC-SHA256 signed callback tokens with TTL + JSON persistence
 ├── scheduler.py         # Daily DB cleanup job (90-day purge + optimize)
-└── config.py            # Config
+├── improved_utils.py    # Image download with retry + Referer headers (JavBus) + curl subprocess (JavDb)
+└── models.py            # (split into the models/ package)
 ```
 
 ### Key distinctions
@@ -92,25 +97,26 @@ app/
 - **Shared state**: `handlers/__init__.py` holds global `_SharedState(config, service)`. Set once in `build_app()`, accessed by handlers via `_get_shared()`. `TYPE_CHECKING`-guarded import to avoid circular imports.
 - **Async dispatch**: Handlers are async (python-telegram-bot v20+). Sync libraries (requests, BeautifulSoup) wrapped in `asyncio.to_thread`. Exception: JavDbScraper uses `asyncio.create_subprocess_exec` for curl.
 - **Multi-layer cache**: `TTLCache` with thread-safe OrderedDict, per-key TTL, max-size eviction, JSON persistence (debounced 5s). Five instances in `ActressService` with TTLs ranging 900s–43200s.
-- **Secure callbacks**: `secure_callback.py` — HMAC-SHA256 signed tokens for inline keyboard buttons. Format: `prefix:8hexkey:16hexsig:timestamp`. One-time use (consumed on resolve), 7d TTL, JSON persistence with dirty-flag delayed save. Convenience: `short_callback(prefix, data)` / `resolve_callback(prefix, token)`.
+- **Secure callbacks**: `secure_callback.py` — HMAC-SHA256 signed tokens for inline keyboard buttons. Format: `prefix:8hexkey:16hexsig:timestamp`. One-time use (consumed on resolve), 7d TTL, JSON persistence with dirty-flag delayed save. Convenience: `short_callback(prefix, data)` / `resolve_callback(prefix, token)`. Plaintext callbacks are allowed **only** for UI navigation (`menu:`, `lang:`, `hist:page:`, `rank:`, `rank_retry:`, `myfav:*`); anything carrying data must be HMAC-signed.
 - **Rate limiter**: `RateLimiter(calls_per_second)` with thread lock + sleep-wait. JavBus: 0.5/s, Wiki API: 1.0/s.
 - **I18n**: Dict-based, 3 languages (zh_CN/en_US/ja_JP). Fallback chain: requested lang → default lang → raw key. `t()` applies `str.format()` from 3rd positional arg onwards.
 - **Scheduler**: `scheduled_cleanup()` via `Application.job_queue` daily. Purges `favorite_queries` >90 days, optimizes MySQL tables. Rank background refresh starts in `post_init` lifecycle hook.
 - **Works browser**: `handlers/works.py` — inline gallery paginated via secure callbacks. Works merged from JavBus (latest) + JavDb (top), deduped by AV ID, sorted by date desc.
 - **Favorites on-by-default for push**: `push_enabled_global` defaults to `1`.
+- **Push dedup & modes**: `user_seen_works` dedups work pushes by `(user_id, av_id)`; `actress_works` stays as the work-info store / backfill source. `user_push_settings.push_mode` is planned as `instant`/`digest`/`off` (docs-first — not yet implemented).
 
 ## External data sources
 
 | Source | Used for | Access method | Key constraint |
 |--------|----------|---------------|----------------|
 | JavBus | Actress search, AV metadata, magnets | `jvav` library | Rate-limited 0.5/s |
-| JavDb | Works, rankings, avatar | curl subprocess (Cloudflare JA3 bypass) | Requires macOS SecureTransport TLS |
+| JavDb | Works, rankings, avatar | `curl_cffi` (primary) + curl subprocess (fallback) | Requires macOS SecureTransport TLS |
 | Wikipedia/Wikidata | Bio, social links | `wikipediaapi` lib + direct API | Rate-limited 1/s |
-| sukebei.nyaa.si | Magnet links | requests + BeautifulSoup | 20s timeout |
+| sukebei.nyaa.si | Magnet links | httpx + BeautifulSoup | 20s timeout |
 
 ### JavDb Cloudflare bypass
 
-macOS curl uses SecureTransport TLS. Python urllib3 uses OpenSSL. Cloudflare's JA3 fingerprint blocks OpenSSL/BoringSSL but passes macOS SecureTransport. Hence `subprocess curl` + browser User-Agent via `asyncio.create_subprocess_exec`.
+macOS curl uses SecureTransport TLS. Python urllib3 uses OpenSSL. Cloudflare's JA3 fingerprint blocks OpenSSL/BoringSSL but passes macOS SecureTransport. Hence JavDbScraper uses `curl_cffi` (browser TLS impersonation) as primary, falling back to `subprocess curl` + browser User-Agent via `asyncio.create_subprocess_exec`.
 
 ## Configuration
 
