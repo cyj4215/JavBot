@@ -67,6 +67,7 @@ _SQL_INIT = [
     CREATE TABLE IF NOT EXISTS user_push_settings (
         user_id BIGINT PRIMARY KEY,
         push_enabled BOOLEAN DEFAULT 1,
+        push_mode VARCHAR(10) NOT NULL DEFAULT 'instant',
         last_check TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(user_id),
         INDEX idx_ups_last_check (last_check),
@@ -123,6 +124,7 @@ class FavoritesManager:
         )
         manager = cls(pool)
         await manager._init_tables()
+        await manager._ensure_push_mode_column()
         await manager._backfill_user_seen_works()
         logger.info("MySQL 连接池已创建，表结构已初始化")
         return manager
@@ -138,6 +140,29 @@ class FavoritesManager:
             for ddl in _SQL_INIT:
                 await cur.execute(ddl)
             await conn.commit()
+
+    async def _ensure_push_mode_column(self) -> None:
+        """幂等迁移：为旧库补充 push_mode 列，并回填历史开关状态。"""
+        try:
+            row = await self._select_one(
+                """
+                SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_push_settings'
+                  AND COLUMN_NAME = 'push_mode'
+                """
+            )
+            if row and row["cnt"]:
+                return
+            await self._execute(
+                "ALTER TABLE user_push_settings "
+                "ADD COLUMN push_mode VARCHAR(10) NOT NULL DEFAULT 'instant'"
+            )
+            await self._execute(
+                "UPDATE user_push_settings SET push_mode = 'off' WHERE push_enabled = 0"
+            )
+            logger.info("user_push_settings.push_mode 列迁移完成")
+        except Exception as e:
+            logger.error(f"迁移 push_mode 列失败: {e}")
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -477,27 +502,35 @@ class FavoritesManager:
             if row:
                 return {
                     "push_enabled": row["push_enabled"],
+                    "push_mode": row.get("push_mode", "instant"),
                     "last_check": str(row["last_check"]) if row.get("last_check") else None,
                 }
-            return {"push_enabled": 1, "last_check": None}
+            return {"push_enabled": 1, "push_mode": "instant", "last_check": None}
         except Exception as e:
             logger.error(f"获取推送设置失败: {e}")
-            return {"push_enabled": 1, "last_check": None}
+            return {"push_enabled": 1, "push_mode": "instant", "last_check": None}
 
     async def set_push_enabled(self, user_id: int, enabled: bool) -> bool:
+        return await self.set_push_mode(user_id, "instant" if enabled else "off")
+
+    async def set_push_mode(self, user_id: int, mode: str) -> bool:
+        if mode not in ("instant", "digest", "off"):
+            logger.warning(f"非法 push_mode: {mode}")
+            return False
         try:
             await self._execute(
                 """
-                INSERT INTO user_push_settings (user_id, push_enabled, last_check)
-                VALUES (%s, %s, CURRENT_TIMESTAMP)
+                INSERT INTO user_push_settings (user_id, push_enabled, push_mode, last_check)
+                VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE
+                    push_mode = VALUES(push_mode),
                     push_enabled = VALUES(push_enabled)
                 """,
-                (user_id, 1 if enabled else 0),
+                (user_id, 1 if mode != "off" else 0, mode),
             )
             return True
         except Exception as e:
-            logger.error(f"设置推送开关失败: {e}")
+            logger.error(f"设置推送模式失败: {e}")
             return False
 
     async def update_last_check(self, user_id: int) -> bool:
@@ -523,7 +556,7 @@ class FavoritesManager:
                 SELECT DISTINCT f.user_id
                 FROM favorites f
                 LEFT JOIN user_push_settings ups ON f.user_id = ups.user_id
-                WHERE ups.user_id IS NULL OR ups.push_enabled = 1
+                WHERE ups.user_id IS NULL OR ups.push_mode <> 'off'
                 """,
             )
             return [r["user_id"] for r in rows]

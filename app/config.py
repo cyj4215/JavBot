@@ -36,6 +36,8 @@ class BotConfig:
     push_check_interval: int
     push_enabled_global: bool
     push_batch_delay: int
+    push_digest_enabled: bool
+    push_digest_interval: int
     admin_user_id: int | None
     log_level: str
     i18n_default_language: str
@@ -79,6 +81,8 @@ class BotConfig:
             push_check_interval=_env_int("PUSH_CHECK_INTERVAL", "3600"),
             push_enabled_global=_env_bool("PUSH_ENABLED"),
             push_batch_delay=_env_int("PUSH_BATCH_DELAY", "5"),
+            push_digest_enabled=_env_bool("PUSH_DIGEST_ENABLED"),
+            push_digest_interval=_env_int("PUSH_DIGEST_INTERVAL", "86400"),
             admin_user_id=admin_user_id,
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
             i18n_default_language=os.getenv("I18N_DEFAULT_LANGUAGE", "zh_CN").strip(),

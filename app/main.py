@@ -30,7 +30,12 @@ from .handlers.favorites import (
 )
 from .handlers.history import history_cmd, history_page_callback
 from .handlers.magnet import callback_copymagnet, magnet_cmd
-from .handlers.push import check_and_push_new_works, push_toggle_cmd
+from .handlers.push import (
+    check_and_push_new_works,
+    check_and_send_digests,
+    push_mode_callback,
+    push_toggle_cmd,
+)
 from .handlers.rank import rank_cmd, rank_page_callback
 from .handlers.search import cancel_search_callback, on_text, search_cmd
 from .handlers.settings import language_callback, language_cmd
@@ -150,6 +155,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("myfav", my_favorites_cmd))
     app.add_handler(CommandHandler("favlatest", favorites_latest_cmd))
     app.add_handler(CommandHandler("push", push_toggle_cmd))
+    app.add_handler(CallbackQueryHandler(push_mode_callback, pattern=r"^pushmode:"))
     app.add_handler(CallbackQueryHandler(callback_favquery, pattern=r"^favquery:"))
     app.add_handler(CallbackQueryHandler(callback_favnow, pattern=r"^favnow:"))
     app.add_handler(CallbackQueryHandler(callback_unfavnow, pattern=r"^unfavnow:"))
@@ -174,6 +180,14 @@ def build_app() -> Application:
         )
         job_queue.run_daily(scheduled_cleanup, time=datetime_time(hour=3, minute=0))
         logging.info("已启用新作品推送检查，间隔: %s秒", config.push_check_interval)
+
+        if config.push_digest_enabled:
+            job_queue.run_repeating(
+                check_and_send_digests,
+                interval=config.push_digest_interval,
+                first=config.push_digest_interval,
+            )
+            logging.info("已启用每日汇总推送，间隔: %s秒", config.push_digest_interval)
 
     return app
 

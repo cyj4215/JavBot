@@ -19,8 +19,10 @@ class TestPushToggleCmd:
         self._handler = push_toggle_cmd
         import app.handlers.push as push_mod
         self._fav_mgr = AsyncMock()
-        self._fav_mgr.get_push_settings.return_value = {"push_enabled": True, "last_check": None}
-        self._fav_mgr.set_push_enabled = AsyncMock()
+        self._fav_mgr.get_push_settings.return_value = {
+            "push_enabled": True, "push_mode": "instant", "last_check": None,
+        }
+        self._fav_mgr.set_push_mode = AsyncMock()
         monkeypatch.setattr(push_mod, "get_favorites_manager", AsyncMock(return_value=self._fav_mgr))
 
     async def _call(self, update, context):
@@ -41,14 +43,14 @@ class TestPushToggleCmd:
         mock_context.args = ["on"]
         mock_update.effective_message = AsyncMock()
         await self._call(mock_update, mock_context)
-        self._fav_mgr.set_push_enabled.assert_awaited_once()
+        self._fav_mgr.set_push_mode.assert_awaited_once_with(12345, "instant")
 
     async def test_disable_push(self, mock_update, mock_context):
         """push off → disable push."""
         mock_context.args = ["off"]
         mock_update.effective_message = AsyncMock()
         await self._call(mock_update, mock_context)
-        self._fav_mgr.set_push_enabled.assert_awaited_once()
+        self._fav_mgr.set_push_mode.assert_awaited_once_with(12345, "off")
 
     async def test_invalid_arg_shows_usage(self, mock_update, mock_context):
         """Invalid arg → show usage."""
@@ -62,7 +64,7 @@ class TestPushToggleCmd:
         mock_context.args = ["disable"]
         mock_update.effective_message = AsyncMock()
         await self._call(mock_update, mock_context)
-        self._fav_mgr.set_push_enabled.assert_awaited_once()
+        self._fav_mgr.set_push_mode.assert_awaited_once_with(12345, "off")
 
 
 class TestCheckAndPushNewWorks:
@@ -73,10 +75,14 @@ class TestCheckAndPushNewWorks:
         import app.handlers.push as push_mod
         self._fav_mgr = AsyncMock()
         self._fav_mgr.get_users_with_push_enabled.return_value = [12345]
+        self._fav_mgr.get_push_settings.return_value = {
+            "push_enabled": True, "push_mode": "instant", "last_check": None,
+        }
         self._fav_mgr.get_favorites.return_value = {"items": [
             {"actress_name": "TestActress", "actress_id": "TA-001", "created_at": "2026-05-01"},
         ], "next_cursor": None, "total": 1}
         self._fav_mgr.record_user_work.return_value = True
+        self._fav_mgr.update_last_check = AsyncMock()
         monkeypatch.setattr(push_mod, "get_favorites_manager", AsyncMock(return_value=self._fav_mgr))
         self._svc = shared_global.service
         self._svc.query_profile_async.return_value = _fake_profile(
