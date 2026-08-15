@@ -112,7 +112,10 @@ async def test_cleanup_old_data(manager):
     conn = _mock_conn(rowcount=5)
     manager._pool.acquire = _mock_pool_acquire(conn)
     await manager.cleanup_old_data(days=90)
-    assert conn.cursor.return_value.__aenter__.return_value.execute.await_count >= 2
+    cursor = conn.cursor.return_value.__aenter__.return_value
+    sqls = [call.args[0] for call in cursor.execute.call_args_list]
+    assert any("user_seen_works" in s for s in sqls)
+    assert any("actress_works" in s for s in sqls)
     conn.commit.assert_awaited_once()
 
 
@@ -121,6 +124,11 @@ async def test_record_user_work_new(manager):
     conn = _mock_conn(rowcount=1)
     manager._pool.acquire = _mock_pool_acquire(conn)
     assert await manager.record_user_work(123, "河北彩花", "SSIS-123") is True
+    cursor = conn.cursor.return_value.__aenter__.return_value
+    sql = cursor.execute.call_args[0][0]
+    params = cursor.execute.call_args[0][1]
+    assert "user_seen_works" in sql
+    assert params == (123, "SSIS-123", "河北彩花")
 
 
 @pytest.mark.asyncio
@@ -128,6 +136,11 @@ async def test_record_user_work_duplicate(manager):
     conn = _mock_conn(rowcount=0)
     manager._pool.acquire = _mock_pool_acquire(conn)
     assert await manager.record_user_work(123, "河北彩花", "SSIS-123") is False
+    cursor = conn.cursor.return_value.__aenter__.return_value
+    sql = cursor.execute.call_args[0][0]
+    params = cursor.execute.call_args[0][1]
+    assert "user_seen_works" in sql
+    assert params == (123, "SSIS-123", "河北彩花")
 
 
 @pytest.mark.asyncio
@@ -136,3 +149,8 @@ async def test_record_user_work_same_av_different_user(manager):
     conn = _mock_conn(rowcount=1)
     manager._pool.acquire = _mock_pool_acquire(conn)
     assert await manager.record_user_work(456, "河北彩花", "SSIS-123") is True
+    cursor = conn.cursor.return_value.__aenter__.return_value
+    sql = cursor.execute.call_args[0][0]
+    params = cursor.execute.call_args[0][1]
+    assert "user_seen_works" in sql
+    assert params == (456, "SSIS-123", "河北彩花")

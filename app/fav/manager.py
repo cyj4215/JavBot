@@ -96,6 +96,7 @@ _SQL_INIT = [
         av_id VARCHAR(255) NOT NULL,
         actress_name VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(user_id),
         UNIQUE KEY uk_user_av (user_id, av_id),
         INDEX idx_usw_created (created_at)
     )
@@ -123,6 +124,7 @@ class FavoritesManager:
         )
         manager = cls(pool)
         await manager._init_tables()
+        await manager._backfill_user_seen_works()
         logger.info("MySQL 连接池已创建，表结构已初始化")
         return manager
 
@@ -416,9 +418,7 @@ class FavoritesManager:
             logger.error(f"记录女优作品失败: {e}")
             return False
 
-    async def record_user_work(
-        self, user_id: int, actress_name: str, av_id: str
-    ) -> bool:
+    async def record_user_work(self, user_id: int, actress_name: str, av_id: str) -> bool:
         """按用户记录作品。同一用户第一次见到该番号返回 True，重复返回 False。"""
         try:
             async with self._pool.acquire() as conn, conn.cursor() as cur:
@@ -434,6 +434,23 @@ class FavoritesManager:
         except Exception as e:
             logger.error(f"记录用户作品失败: {e}")
             return False
+
+    async def _backfill_user_seen_works(self) -> None:
+        """上线迁移：把全局 actress_works 历史按收藏关系回填为'用户已见'，
+        避免首轮推送向所有用户洪泛存量作品。INSERT IGNORE 幂等。"""
+        try:
+            affected = await self._execute(
+                """
+                INSERT IGNORE INTO user_seen_works (user_id, av_id, actress_name)
+                SELECT f.user_id, aw.av_id, aw.actress_name
+                FROM favorites f
+                JOIN actress_works aw ON f.actress_name = aw.actress_name
+                """
+            )
+            if affected > 0:
+                logger.info(f"已回填 {affected} 条用户已见作品记录")
+        except Exception as e:
+            logger.error(f"回填 user_seen_works 失败: {e}")
 
     # ------------------------------------------------------------------
     # Export favorites
@@ -616,6 +633,7 @@ class FavoritesManager:
                     "actress_works",
                     "favorites",
                     "user_push_settings",
+                    "user_seen_works",
                 ):
                     await cur.execute(f"OPTIMIZE TABLE {tbl}")
                 await conn.commit()
