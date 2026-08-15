@@ -7,6 +7,12 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from ..models.actors import ActorSearchResult
 
+_RANK_FALLBACK: dict[str, str] = {
+    "rank_prev": "◀️ 上一页",
+    "rank_next": "下一页 ▶️",
+    "menu_return": "🔄 返回主菜单",
+}
+
 
 def format_rankings(
     stars: list[ActorSearchResult],
@@ -32,17 +38,26 @@ def format_rankings(
     return "\n".join(lines)
 
 
-def build_rank_keyboard(limit: int, page: int, with_avatars: bool = False) -> InlineKeyboardMarkup:
+def build_rank_keyboard(
+    limit: int,
+    page: int,
+    with_avatars: bool = False,
+    _t: Callable[..., str] = lambda k, *a: _RANK_FALLBACK.get(k, k),
+) -> InlineKeyboardMarkup:
     page = max(1, min(page, 5))
     limit = max(1, min(limit, 50))
     rows: list[list[InlineKeyboardButton]] = []
     nav: list[InlineKeyboardButton] = []
     av = "1" if with_avatars else "0"
     if page > 1:
-        nav.append(InlineKeyboardButton("◀️ 上一页", callback_data=f"rank:{limit}:{page - 1}:{av}"))
+        nav.append(
+            InlineKeyboardButton(_t("rank_prev"), callback_data=f"rank:{limit}:{page - 1}:{av}")
+        )
     if page < 5:
-        nav.append(InlineKeyboardButton("下一页 ▶️", callback_data=f"rank:{limit}:{page + 1}:{av}"))
+        nav.append(
+            InlineKeyboardButton(_t("rank_next"), callback_data=f"rank:{limit}:{page + 1}:{av}")
+        )
     if nav:
         rows.append(nav)
-    rows.append([InlineKeyboardButton("🔄 返回主菜单", callback_data="menu:rank")])
+    rows.append([InlineKeyboardButton(_t("menu_return"), callback_data="menu:rank")])
     return InlineKeyboardMarkup(rows)

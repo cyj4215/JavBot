@@ -208,22 +208,30 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return shared.service.i18n.t(key, lang, *a)
 
     await msg.reply_text(
-        "可用命令：\n"
-        "/s 名字 - " + _("search_actress").split("\n")[0] + "\n"
-        "/rank - " + _("rank_title") + "\n"
-        "/history - 搜索历史\n"
-        "/language - 切换语言\n\n"
-        "/search 关键词 - " + _("magnet_result") + "\n"
-        "/magnet 关键词 - " + _("magnet_result") + "\n"
-        "/m 关键词 - " + _("magnet_result") + "\n\n"
-        "收藏功能：\n"
-        "/fav 名字 - 收藏\n"
-        "/unfav 名字 - 取消收藏\n"
-        "/myfav - " + _("fav_list_title") + "\n"
-        "/favlatest - 查看收藏女优最新作品\n"
-        "/exportfav - 导出收藏\n\n"
-        "支持直接发送名字查询。\n"
-        "发送番号自动搜索磁力。\n"
+        "\n".join(
+            [
+                _("help_commands"),
+                _("help_s") + _("search_actress").split("\n")[0],
+                "/rank - " + _("rank_title"),
+                _("help_history"),
+                _("help_language"),
+                "",
+                _("help_search") + _("magnet_result"),
+                _("help_magnet") + _("magnet_result"),
+                _("help_m") + _("magnet_result"),
+                "",
+                _("help_favorites"),
+                _("help_fav"),
+                _("help_unfav"),
+                "/myfav - " + _("fav_list_title"),
+                _("help_favlatest"),
+                _("help_exportfav"),
+                "",
+                _("help_free_text"),
+                _("help_av_id"),
+                "",
+            ]
+        )
     )
 
 

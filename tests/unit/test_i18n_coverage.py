@@ -1,21 +1,23 @@
-"""Regression: every i18n key used in handlers exists in all three languages."""
+"""Regression: every i18n key used in handlers and formatters exists in all three languages."""
 import re
 from pathlib import Path
 
 from app.services.i18n import _TRANSLATIONS, SUPPORTED_LANGUAGES
 
-HANDLERS_DIR = Path(__file__).resolve().parents[2] / "app" / "handlers"
+APP_DIR = Path(__file__).resolve().parents[2] / "app"
+SCAN_DIRS = ("handlers", "formatters")
 
 _KEY_RE = re.compile(r"""_(?:t)?\(['"]([a-z_][a-z0-9_]*)['"]""")
 
 
 def test_all_handler_keys_translated():
     missing = set()
-    for path in sorted(HANDLERS_DIR.glob("*.py")):
-        text = path.read_text(encoding="utf-8")
-        for key in _KEY_RE.findall(text):
-            if key not in _TRANSLATIONS:
-                missing.add(f"{path.name}:{key}")
+    for rel_dir in SCAN_DIRS:
+        for path in sorted((APP_DIR / rel_dir).glob("*.py")):
+            text = path.read_text(encoding="utf-8")
+            for key in _KEY_RE.findall(text):
+                if key not in _TRANSLATIONS:
+                    missing.add(f"{path.relative_to(APP_DIR)}:{key}")
     assert not missing, f"Untranslated keys: {sorted(missing)}"
 
 

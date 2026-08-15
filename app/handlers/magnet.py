@@ -113,10 +113,11 @@ async def callback_copymagnet(
     update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared
 ) -> None:
     """Handle copymagnet: callback — send full magnet link as text for copy."""
+    _ = await make_t(shared, update)
     data = q.data or ""
     magnet_url = _resolve_callback("copymagnet", data)
     if magnet_url is None:
-        await q.answer("该链接已过期", show_alert=True)
+        await q.answer(_("fav_expired"), show_alert=True)
         return
     await q.answer()
     await q.message.reply_text(

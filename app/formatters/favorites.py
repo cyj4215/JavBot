@@ -9,7 +9,6 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from ..models.favorites import FavoriteEntry
 from ..secure_callback import short_callback as _short_callback
 
-_SORT_LABELS: dict[str, str] = {"date": "收藏时间", "name": "名称", "recent": "最近查询"}
 _FALLBACK_LABELS: dict[str, str] = {
     "fav_list_title": "我的收藏",
     "sort_label": "排序: {}",

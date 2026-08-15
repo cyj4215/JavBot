@@ -12,7 +12,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from ..fav import get_favorites_manager
-from ..formatters import _SORT_LABELS, render_favorites_page
+from ..formatters import render_favorites_page
 from ..models import FavoriteEntry
 from ..secure_callback import resolve_callback as _resolve_callback
 from ..secure_callback import short_callback as _short_callback
@@ -50,17 +50,21 @@ async def _get_user_favorites(user_id: int):
     return favorites
 
 
-async def _update_favorite_keyboard(q, is_favorited: bool, actress_name: str) -> None:
+async def _update_favorite_keyboard(
+    q, is_favorited: bool, actress_name: str, _t=lambda k, *a: k
+) -> None:
     """Create and apply the keyboard update for favorite/unfavorite toggle."""
     if is_favorited:
         new_keyboard = InlineKeyboardMarkup(
             [
                 [
                     InlineKeyboardButton(
-                        "⭐ 已收藏", callback_data=_short_callback("unfavnow", actress_name)
+                        _t("profile_favorited"),
+                        callback_data=_short_callback("unfavnow", actress_name),
                     ),
                     InlineKeyboardButton(
-                        "📰 查看最新作品", callback_data=_short_callback("works", actress_name)
+                        _t("profile_latest_works_btn"),
+                        callback_data=_short_callback("works", actress_name),
                     ),
                 ]
             ]
@@ -70,10 +74,12 @@ async def _update_favorite_keyboard(q, is_favorited: bool, actress_name: str) ->
             [
                 [
                     InlineKeyboardButton(
-                        "☆ 收藏", callback_data=_short_callback("favnow", actress_name)
+                        _t("profile_favorite"),
+                        callback_data=_short_callback("favnow", actress_name),
                     ),
                     InlineKeyboardButton(
-                        "📰 查看最新作品", callback_data=_short_callback("works", actress_name)
+                        _t("profile_latest_works_btn"),
+                        callback_data=_short_callback("works", actress_name),
                     ),
                 ]
             ]
@@ -216,7 +222,7 @@ async def my_favorites_cmd(
     sort = "date"
     if context.args:
         arg = context.args[0].lower()
-        if arg in _SORT_LABELS:
+        if arg in ("date", "name", "recent"):
             sort = arg
 
     favorites_per_page = 6
@@ -331,7 +337,7 @@ async def callback_favquery(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         await q.answer(_("fav_expired"), show_alert=True)
         return
 
-    await q.answer(f"正在查询 {actress_name}...")
+    await q.answer(_("fav_querying_one", actress_name))
     await run_search_reply(
         q.message,
         actress_name,
@@ -370,7 +376,7 @@ async def callback_favnow(update: Update, context: ContextTypes.DEFAULT_TYPE, q,
         )
         if success:
             await q.answer(_("fav_added", profile.star_name))
-            await _update_favorite_keyboard(q, True, profile.star_name)
+            await _update_favorite_keyboard(q, True, profile.star_name, _t=_)
         else:
             await q.answer(_("fav_add_failed_alert"), show_alert=True)
     except Exception as exc:
@@ -396,7 +402,7 @@ async def callback_unfavnow(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         )
         if success:
             await q.answer(_("fav_removed", actress_name))
-            await _update_favorite_keyboard(q, False, actress_name)
+            await _update_favorite_keyboard(q, False, actress_name, _t=_)
         else:
             await q.answer(_("fav_remove_failed_alert"), show_alert=True)
     except Exception as exc:
@@ -483,7 +489,7 @@ async def callback_myfav_sort(
         await _edit_or_send(q, _("fav_empty"))
         return
 
-    await q.answer(_("sort_changed", _SORT_LABELS.get(next_sort, next_sort)))
+    await q.answer(_("sort_changed", _(f"sort_{next_sort}")))
     last_query_map = await fav_mgr.get_last_query_time_map(update.effective_user.id)
     fav_models = [FavoriteEntry.model_validate(f) for f in favorites]
     text, reply_markup = render_favorites_page(

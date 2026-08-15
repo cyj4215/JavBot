@@ -98,7 +98,7 @@ async def _send_rank_result(
                 text=text,
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True,
-                reply_markup=build_rank_keyboard(limit, page, with_avatars),
+                reply_markup=build_rank_keyboard(limit, page, with_avatars, _t=_t),
             )
             if is_edit:
                 await target.edit_message_text(**kwargs)  # type: ignore[union-attr]
@@ -111,7 +111,7 @@ async def _send_rank_result(
             text=format_rankings(stars, page, limit=limit, _t=_t),
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
-            reply_markup=build_rank_keyboard(limit, page, with_avatars),
+            reply_markup=build_rank_keyboard(limit, page, with_avatars, _t=_t),
         )
         if is_edit:
             await target.edit_message_text(**kwargs)  # type: ignore[union-attr]
