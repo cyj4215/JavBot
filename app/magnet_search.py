@@ -26,8 +26,11 @@ UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chr
 class MagnetSearch:
     """Search sukebei.nyaa.si for magnet links with caching and fallback variations."""
 
-    def __init__(self, proxy: str = ""):
-        self._cache = TTLCache(max_size=DEFAULT_CACHE_SIZE, default_ttl=DEFAULT_CACHE_TTL)
+    def __init__(self, proxy: str = "", cache_ttl: int | None = None):
+        self._cache = TTLCache(
+            max_size=DEFAULT_CACHE_SIZE,
+            default_ttl=cache_ttl if cache_ttl is not None else DEFAULT_CACHE_TTL,
+        )
         self._proxy = proxy
 
     def search(

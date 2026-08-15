@@ -22,9 +22,11 @@ class RankService:
         rank_cache: TTLCache,
         refresh_interval: int = 600,
         javdb_scraper: JavDbScraper | None = None,
+        default_limit: int = 20,
     ):
         self.rank_cache = rank_cache
         self.refresh_interval = refresh_interval
+        self.default_limit = default_limit
         self._refresh_task: asyncio.Task | None = None
         self._warming = False
         self._scraper = javdb_scraper
@@ -54,11 +56,11 @@ class RankService:
         self._warming = True
         try:
             for page in range(1, 4):
-                cache_key = ("rank", 20, page)
+                cache_key = ("rank", self.default_limit, page)
                 if self.rank_cache.get(cache_key) is not None:
                     continue
                 try:
-                    result = await self._try_javdb_rankings(20, page)
+                    result = await self._try_javdb_rankings(self.default_limit, page)
                     if result:
                         logging.info("排行榜预热成功: page=%d, %d 个演员", page, len(result))
                     else:

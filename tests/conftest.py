@@ -74,6 +74,8 @@ def mock_config():
     config.uncensored = False
     config.rank_limit_default = 20
     config.rank_page_default = 1
+    config.push_batch_delay = 0
+    config.magnet_cache_ttl = 300
     type(config).admin_user_id = PropertyMock(return_value=None)
     return config
 

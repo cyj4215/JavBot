@@ -120,7 +120,7 @@ async def check_and_push_new_works(context: ContextTypes.DEFAULT_TYPE) -> None:
                     users_with_new_works += 1
 
             if batch_start + batch_size < len(user_ids):
-                await asyncio.sleep(batch_size)
+                await asyncio.sleep(shared.config.push_batch_delay)
 
         logger.info("新作品检查完成")
 

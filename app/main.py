@@ -127,6 +127,8 @@ def build_app() -> Application:
         uncensored=config.uncensored,
         rank_cache_ttl=config.rank_cache_ttl,
         i18n_default_language=config.i18n_default_language,
+        magnet_cache_ttl=config.magnet_cache_ttl,
+        rank_limit_default=config.rank_limit_default,
     )
 
     _set_shared(config, service)

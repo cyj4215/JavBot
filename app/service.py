@@ -37,6 +37,8 @@ class ActressService:
         uncensored: bool = False,
         rank_cache_ttl: int = 900,
         i18n_default_language: str = "zh_CN",
+        magnet_cache_ttl: int = 300,
+        rank_limit_default: int = 20,
         *,
         wiki_service: WikiService | None = None,
         javbus_service: JavBusService | None = None,
@@ -59,7 +61,7 @@ class ActressService:
             timeout=httpx.Timeout(20.0),
             proxy=proxy_addr if proxy_addr else None,
         )
-        self._magnet_search = MagnetSearch(proxy_addr)
+        self._magnet_search = MagnetSearch(proxy_addr, cache_ttl=magnet_cache_ttl)
 
         _cache_dir = os.path.join(os.getcwd(), "data", "cache")
         self.profile_cache: TTLCache = TTLCache(
@@ -89,6 +91,7 @@ class ActressService:
             rank_cache=self.rank_cache,
             refresh_interval=rank_cache_ttl,
             javdb_scraper=self._javdb_scraper,
+            default_limit=rank_limit_default,
         )
         self.i18n = I18nService(default_lang=i18n_default_language)
 

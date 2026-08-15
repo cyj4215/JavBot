@@ -29,11 +29,13 @@ class BotConfig:
     latest_cover_limit: int
     magnet_limit: int
     magnet_timeout: int
+    magnet_cache_ttl: int
     profile_cache_ttl: int
     uncensored: bool
     allowed_user_ids: set[int]
     push_check_interval: int
     push_enabled_global: bool
+    push_batch_delay: int
     admin_user_id: int | None
     log_level: str
     i18n_default_language: str
@@ -66,6 +68,7 @@ class BotConfig:
             latest_cover_limit=_env_int("LATEST_COVER_LIMIT", "3"),
             magnet_limit=_env_int("MAGNET_LIMIT", "5"),
             magnet_timeout=_env_int("MAGNET_TIMEOUT", "20"),
+            magnet_cache_ttl=_env_int("MAGNET_CACHE_TTL", "300"),
             profile_cache_ttl=_env_int("PROFILE_CACHE_TTL", "1800"),
             uncensored=_env_bool("UNCENSORED", "0"),
             allowed_user_ids={
@@ -75,6 +78,7 @@ class BotConfig:
             },
             push_check_interval=_env_int("PUSH_CHECK_INTERVAL", "3600"),
             push_enabled_global=_env_bool("PUSH_ENABLED"),
+            push_batch_delay=_env_int("PUSH_BATCH_DELAY", "5"),
             admin_user_id=admin_user_id,
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
             i18n_default_language=os.getenv("I18N_DEFAULT_LANGUAGE", "zh_CN").strip(),
