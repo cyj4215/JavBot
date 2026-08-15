@@ -95,7 +95,7 @@ app/
 
 - **Facade**: `ActressService` delegates to sub-services in `services/`. Profile queries fan out via `asyncio.gather` (Wiki + JavBus + JavDb) with `return_exceptions=True` — failures in one source don't block others.
 - **Shared state**: `handlers/__init__.py` holds global `_SharedState(config, service)`. Set once in `build_app()`, accessed by handlers via `_get_shared()`. `TYPE_CHECKING`-guarded import to avoid circular imports.
-- **Async dispatch**: Handlers are async (python-telegram-bot v20+). Sync libraries (requests, BeautifulSoup) wrapped in `asyncio.to_thread`. Exception: JavDbScraper uses `asyncio.create_subprocess_exec` for curl.
+- **Async dispatch**: Handlers are async (python-telegram-bot v20+). Sync libraries (requests, BeautifulSoup) wrapped in `asyncio.to_thread`. Exception: JavDbScraper falls back to `subprocess curl` inside `asyncio.to_thread`.
 - **Multi-layer cache**: `TTLCache` with thread-safe OrderedDict, per-key TTL, max-size eviction, JSON persistence (debounced 5s). Five instances in `ActressService` with TTLs ranging 900s–43200s.
 - **Secure callbacks**: `secure_callback.py` — HMAC-SHA256 signed tokens for inline keyboard buttons. Format: `prefix:8hexkey:16hexsig:timestamp`. One-time use (consumed on resolve), 7d TTL, JSON persistence with dirty-flag delayed save. Convenience: `short_callback(prefix, data)` / `resolve_callback(prefix, token)`. Plaintext callbacks are allowed **only** for UI navigation (`menu:`, `lang:`, `hist:page:`, `rank:`, `rank_retry:`, `myfav:*`); anything carrying data must be HMAC-signed.
 - **Rate limiter**: `RateLimiter(calls_per_second)` with thread lock + sleep-wait. JavBus: 0.5/s, Wiki API: 1.0/s.
@@ -116,7 +116,7 @@ app/
 
 ### JavDb Cloudflare bypass
 
-macOS curl uses SecureTransport TLS. Python urllib3 uses OpenSSL. Cloudflare's JA3 fingerprint blocks OpenSSL/BoringSSL but passes macOS SecureTransport. Hence JavDbScraper uses `curl_cffi` (browser TLS impersonation) as primary, falling back to `subprocess curl` + browser User-Agent via `asyncio.create_subprocess_exec`.
+macOS curl uses SecureTransport TLS. Python urllib3 uses OpenSSL. Cloudflare's JA3 fingerprint blocks OpenSSL/BoringSSL but passes macOS SecureTransport. Hence JavDbScraper uses `curl_cffi` (browser TLS impersonation) as primary, falling back to `subprocess curl` + browser User-Agent dispatched via `asyncio.to_thread`.
 
 ## Configuration
 
