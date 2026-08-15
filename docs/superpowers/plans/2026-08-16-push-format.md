@@ -20,6 +20,8 @@
 - Modify: `app/services/i18n/ja_JP.py:81-86`
 - Test: `tests/unit/test_i18n.py`（已有，验证三语言键齐全）
 
+**Note:** 只**新增**键（`push_actress_tag`/`push_date_tag`/`push_detail_btn`）并**改写** `push_title`，**保留** `push_actress`/`push_av_id`/`push_date`/`push_title_label` 四个旧键——`app/handlers/push.py:182-188` 仍引用它们，删除推迟到 Task 4 与 handler 重写同提交。
+
 - [ ] **Step 1: 修改 zh_CN.py**
 
 把（约 81-86 行）：
@@ -33,10 +35,14 @@
     "push_unknown": "未知",
 ```
 
-替换为：
+替换为（新增 `push_actress_tag`/`push_date_tag`/`push_detail_btn`、改写 `push_title`；**保留**四个旧键）：
 
 ```python
     "push_title": "🔔 关注的女优有新作品",
+    "push_actress": "👩 女优：",
+    "push_av_id": "🎬 番号：",
+    "push_date": "📅 日期：",
+    "push_title_label": "📝 标题：",
     "push_actress_tag": "👩 {}",
     "push_date_tag": "📅 {}",
     "push_detail_btn": "🔗 查看详情",
@@ -56,10 +62,14 @@
     "push_unknown": "Unknown",
 ```
 
-替换为：
+替换为（新增 `push_actress_tag`/`push_date_tag`/`push_detail_btn`、改写 `push_title`；**保留**四个旧键）：
 
 ```python
     "push_title": "🔔 Your favorite actress has a new work!",
+    "push_actress": "👩 Actress:",
+    "push_av_id": "🎬 AV ID:",
+    "push_date": "📅 Date:",
+    "push_title_label": "📝 Title:",
     "push_actress_tag": "👩 {}",
     "push_date_tag": "📅 {}",
     "push_detail_btn": "🔗 Details",
@@ -79,10 +89,14 @@
     "push_unknown": "不明",
 ```
 
-替换为：
+替换为（新增 `push_actress_tag`/`push_date_tag`/`push_detail_btn`、改写 `push_title`；**保留**四个旧键）：
 
 ```python
     "push_title": "🔔 お気に入りの新作が出ました！",
+    "push_actress": "👩 女優：",
+    "push_av_id": "🎬 品番：",
+    "push_date": "📅 日付：",
+    "push_title_label": "📝 タイトル：",
     "push_actress_tag": "👩 {}",
     "push_date_tag": "📅 {}",
     "push_detail_btn": "🔗 詳細",
@@ -91,8 +105,8 @@
 
 - [ ] **Step 4: 运行 i18n 测试验证三语言键齐全**
 
-Run: `pytest tests/unit/test_i18n.py -v --no-header`
-Expected: 全部 PASS（键增删后三语言仍然一致、无空值）
+Run: `pytest tests/unit/test_i18n.py tests/unit/test_i18n_coverage.py -v --no-header`
+Expected: 全部 PASS（键增删后三语言仍然一致、无空值；handler 引用的键仍全部存在）
 
 - [ ] **Step 5: Commit**
 
@@ -291,9 +305,25 @@ git commit -m "feat(push): extract format_push_notification formatter (B2 layout
 
 **Files:**
 - Modify: `app/handlers/push.py:1-25`（import 区）和 `:157-216`（函数体）
+- Modify: `app/services/i18n/zh_CN.py` / `app/services/i18n/en_US.py` / `app/services/i18n/ja_JP.py`（删除已不使用的四个旧键）
 - Test: `tests/unit/test_handlers_push.py:152-175`（应保持通过，不改）
 
-- [ ] **Step 1: 添加 import**
+- [ ] **Step 1: 删除三语言中已不使用的四个旧键**
+
+`send_new_work_notification` 切换为 formatter（Step 3）后，handler 不再引用 `push_actress`/`push_av_id`/`push_date`/`push_title_label`。在三个语言文件中删除这四行（位于 `push_title` 与 `push_actress_tag` 之间）：
+
+```python
+    "push_actress": "👩 女优：",
+    "push_av_id": "🎬 番号：",
+    "push_date": "📅 日期：",
+    "push_title_label": "📝 标题：",
+```
+
+（en_US 对应 `"👩 Actress:"` / `"🎬 AV ID:"` / `"📅 Date:"` / `"📝 Title:"`；ja_JP 对应 `"👩 女優："` / `"🎬 品番："` / `"📅 日付："` / `"📝 タイトル："`）
+
+> 旧键必须与 handler 引用移除（Step 3）在**同一提交**中删除，避免出现引用缺失键的中间状态。提交前运行 `pytest tests/unit/test_i18n.py tests/unit/test_i18n_coverage.py -v --no-header` 确认绿色。
+
+- [ ] **Step 2: 添加 import**
 
 在 `app/handlers/push.py` 的 import 区（现有 `from ..models import MergedWork` 之后）加：
 
@@ -301,7 +331,7 @@ git commit -m "feat(push): extract format_push_notification formatter (B2 layout
 from ..formatters.push import format_push_notification
 ```
 
-- [ ] **Step 2: 替换函数体**
+- [ ] **Step 3: 替换函数体**
 
 把 `send_new_work_notification` 中从 `try:`（当前 173 行）到函数结尾的整段（包含手拼 lines、keyboard、send_photo_with_fallback 调用）替换为：
 
@@ -322,20 +352,20 @@ from ..formatters.push import format_push_notification
 
 同时删除函数中不再使用的 `av_id`、`av_date`、`av_title`、`img` 变量和 `lines`、`keyboard` 的旧构建代码。若 `html` import 在文件其他地方已无使用，一并移除（`grep -n 'html.' app/handlers/push.py` 确认）。
 
-- [ ] **Step 3: 运行 handler 测试**
+- [ ] **Step 4: 运行 handler 测试**
 
 Run: `pytest tests/unit/test_handlers_push.py -v --no-header`
 Expected: 全部 PASS（现有断言只查 `bot.send_message` 被调用——无图时 `send_photo_with_fallback` 走 `_send_text` 路径）
 
-- [ ] **Step 4: 运行相关测试全量确认**
+- [ ] **Step 5: 运行相关测试全量确认**
 
-Run: `pytest tests/unit/test_formatters.py tests/unit/test_handlers_push.py tests/unit/test_push_digest.py tests/unit/test_i18n.py -v --no-header`
+Run: `pytest tests/unit/test_formatters.py tests/unit/test_handlers_push.py tests/unit/test_push_digest.py tests/unit/test_i18n.py tests/unit/test_i18n_coverage.py -v --no-header`
 Expected: 全部 PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**（连同 Step 1 删除的旧键一起提交）
 
 ```bash
-git add app/handlers/push.py
+git add app/handlers/push.py app/services/i18n/zh_CN.py app/services/i18n/en_US.py app/services/i18n/ja_JP.py
 git commit -m "refactor(push): use format_push_notification in send_new_work_notification"
 ```
 
@@ -371,6 +401,6 @@ git commit -m "chore: lint fixes after push format refactor" || echo "nothing to
 
 ## Self-Review 记录
 
-- **Spec 覆盖**：B2 布局（Task 3 格式）、T2 胶囊标签（`<code>` 包裹）、查看详情按钮（`work.url` 非空才加，Task 3）、i18n 键增删（Task 1）、7 项边界（Task 2 测试逐一覆盖）、handler 瘦身（Task 4）、测试与验证（Task 2/5）。全部落实。
+- **Spec 覆盖**：B2 布局（Task 3 格式）、T2 胶囊标签（`<code>` 包裹）、查看详情按钮（`work.url` 非空才加，Task 3）、i18n 键新增与 `push_title` 改写（Task 1，旧键保留至 Task 4）、旧键移除（Task 4，与 handler 引用切换同提交）、7 项边界（Task 2 测试逐一覆盖）、handler 瘦身（Task 4）、测试与验证（Task 2/5）。全部落实。
 - **占位符扫描**：无 TBD/TODO；每个代码步骤含完整代码。
 - **类型一致性**：`format_push_notification` 签名在 Task 2（测试）与 Task 3（实现）中一致；按钮文本键名（`push_actress_tag`/`push_date_tag`/`push_detail_btn`）与 Task 1 i18n 新增键一致；`push_unknown` 语义（缺失番号显示）与旧行为一致。
