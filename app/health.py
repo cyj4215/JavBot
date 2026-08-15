@@ -2,31 +2,39 @@
 
 from __future__ import annotations
 
+import html
 import logging
+import threading
 import time
 from collections import deque
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
+
+if TYPE_CHECKING:
+    from .fav.manager import FavoritesManager
+    from .handlers import _SharedState
 
 
 class SourceStatus:
     """轻量数据源健康注册表（进程内）。"""
 
     _status: ClassVar[dict[str, tuple[float, str | None]]] = {}
+    _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @classmethod
     def ok(cls, source: str) -> None:
-        cls._status[source] = (time.time(), None)
+        with cls._lock:
+            cls._status[source] = (time.time(), None)
 
     @classmethod
     def fail(cls, source: str, error: str) -> None:
-        cls._status[source] = (time.time(), error[:200])
+        with cls._lock:
+            cls._status[source] = (time.time(), error[:200])
 
     @classmethod
     def snapshot(cls) -> list[dict]:
-        return [
-            {"source": name, "ts": ts, "error": err}
-            for name, (ts, err) in cls._status.items()
-        ]
+        with cls._lock:
+            items = list(cls._status.items())
+        return [{"source": name, "ts": ts, "error": err} for name, (ts, err) in items]
 
 
 class ErrorRingHandler(logging.Handler):
@@ -35,12 +43,15 @@ class ErrorRingHandler(logging.Handler):
     def __init__(self, maxlen: int = 50) -> None:
         super().__init__(level=logging.ERROR)
         self._buf: deque[str] = deque(maxlen=maxlen)
+        self._lock = threading.Lock()
 
     def emit(self, record: logging.LogRecord) -> None:
-        self._buf.append(f"{self.format(record)}")
+        with self._lock:
+            self._buf.append(f"{self.format(record)}")
 
     def recent(self, n: int = 5) -> list[str]:
-        return list(self._buf)[-n:]
+        with self._lock:
+            return list(self._buf)[-n:]
 
 
 _error_handler = ErrorRingHandler()
@@ -62,11 +73,11 @@ def _fmt_uptime(start_ts: float) -> str:
     return f"{days}天 {hours}小时 {minutes}分"
 
 
-async def collect_health(shared, fav_mgr) -> str:
-    """构建健康检查报告文本。shared 为 handlers._SharedState。"""
+async def collect_health(shared: _SharedState, fav_mgr: FavoritesManager) -> str:
+    """构建健康检查报告文本。"""
     from .main import START_TIME
 
-    def _(key, *a):
+    def _(key: str, *a: str) -> str:
         return shared.service.i18n.t(key, "zh_CN", *a)
 
     lines = [f"<b>🩺 {_('admin_title')}</b>", ""]
@@ -96,9 +107,7 @@ async def collect_health(shared, fav_mgr) -> str:
     except Exception:
         mysql_ok = False
     if mysql_ok:
-        lines.append(
-            f"{_('admin_pool')}: {pool.size}/{pool.maxsize} | SELECT 1: {_('admin_ok')}"
-        )
+        lines.append(f"{_('admin_pool')}: {pool.size}/{pool.maxsize} | SELECT 1: {_('admin_ok')}")
     else:
         lines.append(f"SELECT 1: {_('admin_fail')}")
 
@@ -108,9 +117,13 @@ async def collect_health(shared, fav_mgr) -> str:
     snap = SourceStatus.snapshot()
     if not snap:
         lines.append(_("admin_no_data"))
-    for s in snap:
-        status = _("admin_ok") if s["error"] is None else f"{_('admin_fail')} ({s['error']})"
-        lines.append(f"{s['source']}: {status}")
+    for src in snap:
+        status = (
+            _("admin_ok")
+            if src["error"] is None
+            else f"{_('admin_fail')} ({html.escape(src['error'])})"
+        )
+        lines.append(f"{src['source']}: {status}")
 
     # 回调存储
     lines.append("")
@@ -130,6 +143,6 @@ async def collect_health(shared, fav_mgr) -> str:
     if not recent:
         lines.append(_("admin_no_errors"))
     for entry in recent:
-        lines.append(f"<code>{entry[:300]}</code>")
+        lines.append(f"<code>{html.escape(entry[:300])}</code>")
 
     return "\n".join(lines)

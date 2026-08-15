@@ -32,9 +32,7 @@ async def admin_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         fav_mgr = await get_favorites_manager()
         text = await collect_health(shared, fav_mgr)
-        await msg.reply_text(
-            text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
-        )
+        await msg.reply_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     except Exception as exc:
         logger.exception("admin health check failed: %s", exc)
         await msg.reply_text(shared.service.i18n.t("error_generic"))

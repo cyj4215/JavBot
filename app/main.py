@@ -159,7 +159,9 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("myfav", my_favorites_cmd))
     app.add_handler(CommandHandler("favlatest", favorites_latest_cmd))
     app.add_handler(CommandHandler("push", push_toggle_cmd))
-    app.add_handler(CommandHandler("admin", admin_cmd))
+    app.add_handler(
+        CommandHandler("admin", admin_cmd, filters=filters.ChatType.PRIVATE)
+    )
     app.add_handler(CallbackQueryHandler(push_mode_callback, pattern=r"^pushmode:"))
     app.add_handler(CallbackQueryHandler(callback_favquery, pattern=r"^favquery:"))
     app.add_handler(CallbackQueryHandler(callback_favnow, pattern=r"^favnow:"))
