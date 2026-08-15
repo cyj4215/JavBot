@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 from collections.abc import Callable
+from urllib.parse import urlsplit
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -10,6 +11,17 @@ from ..secure_callback import short_callback as _short_callback
 
 _TITLE_MAX = 200
 _UNKNOWN_DATE = "未知"  # MergedWork.date 模型的哨兵默认值
+
+
+def _is_valid_url(url: str) -> bool:
+    """Telegram URL buttons require a well-formed http(s) URL."""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return False
+    return parts.scheme in ("http", "https") and bool(parts.netloc) and not any(
+        ch.isspace() for ch in url
+    )
 
 
 def format_push_notification(
@@ -44,7 +56,7 @@ def format_push_notification(
             callback_data=_short_callback("favquery", actress_name),
         ),
     ]
-    if work.url and work.url.startswith(("http://", "https://")) and len(work.url) <= 256:
+    if work.url and len(work.url) <= 256 and _is_valid_url(work.url):
         row.append(InlineKeyboardButton(_t("push_detail_btn"), url=work.url))
 
     return "\n".join(lines), InlineKeyboardMarkup([row])
