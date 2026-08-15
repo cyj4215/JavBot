@@ -74,6 +74,18 @@ class TestRenderHistoryPage:
             for row in markup.inline_keyboard for btn in row
         )
 
+    def test_av_id_routed_to_magnet_button(self):
+        queries = [
+            {"actress_name": "SSIS-123", "query_time": "2026-07-01 10:00:00"},
+            {"actress_name": "三上悠亜", "query_time": "2026-07-01 10:00:00"},
+        ]
+        _, markup = _render_history_page(queries, 1, 2)
+        keyboard = markup.inline_keyboard
+        magnet_btn = keyboard[0][0]
+        search_btn = keyboard[1][0]
+        assert magnet_btn.callback_data.startswith("magnet:")
+        assert search_btn.callback_data.startswith("search:")
+
 
 class TestHistoryCmd:
     """history_cmd: display, empty state."""

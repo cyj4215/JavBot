@@ -82,10 +82,11 @@ class TestCallbackFavquery:
         await self._call(mock_update, mock_context)
         mock_q.answer.assert_awaited_once()
 
-    async def test_records_query(self, mock_update, mock_context, mock_q):
+    async def test_does_not_record_directly(self, mock_update, mock_context, mock_q):
+        """记录由 run_search_reply 统一处理，callback 不再重复写入。"""
         mock_q.data = _signed_favquery("TestActress")
         await self._call(mock_update, mock_context)
-        self._fav_mgr.record_favorite_query.assert_awaited()
+        self._fav_mgr.record_favorite_query.assert_not_awaited()
 
     async def test_service_exception_handled(self, mock_update, mock_context, mock_q):
         self._svc.query_profile_async.side_effect = Exception("network error")

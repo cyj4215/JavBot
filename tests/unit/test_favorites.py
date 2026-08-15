@@ -161,6 +161,12 @@ async def test_record_favorite_query_dedup_skip(manager):
     """24h 内同用户同名字已有记录 → 跳过。"""
     manager._select_one = AsyncMock(return_value={"val": 1})
     assert await manager.record_favorite_query(123, "河北彩花") is False
+    sql = manager._select_one.call_args[0][0]
+    params = manager._select_one.call_args[0][1]
+    assert "favorite_queries" in sql
+    assert "LIMIT 1" in sql
+    assert params[0] == 123
+    assert params[1] == "河北彩花"
 
 
 @pytest.mark.asyncio

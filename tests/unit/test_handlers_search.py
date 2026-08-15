@@ -1,9 +1,8 @@
-"""Tests for search handler: cancel_search_callback."""
+"""Tests for search handler: cancel_search_callback, run_search_reply history recording."""
 from unittest.mock import AsyncMock
 
 import pytest
 
-from app.handlers.search import run_search_reply
 from app.models import ActressProfile
 
 

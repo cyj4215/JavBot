@@ -331,8 +331,6 @@ async def callback_favquery(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         await q.answer(_("fav_expired"), show_alert=True)
         return
 
-    fav_mgr = await get_favorites_manager()
-    await fav_mgr.record_favorite_query(update.effective_user.id, actress_name)
     await q.answer(f"正在查询 {actress_name}...")
     await run_search_reply(
         q.message,
