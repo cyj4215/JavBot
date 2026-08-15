@@ -9,6 +9,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from ..fav import get_favorites_manager
+from ..formatters.push import format_push_notification
 from ..models import MergedWork
 from ..secure_callback import short_callback as _short_callback
 from .common import require_auth, require_auth_callback, send_photo_with_fallback
@@ -171,46 +172,12 @@ async def send_new_work_notification(
         return shared.service.i18n.t(key, lang, *a)
 
     try:
-        av_id = work.id or _("push_unknown")
-        av_date = work.date or _("push_unknown")
-        av_title = work.title or ""
-        img = work.img or ""
-
-        lines = [
-            f"<b>{_('push_title')}</b>",
-            "",
-            f"<b>{_('push_actress')}</b>{html.escape(actress_name)}",
-            f"<b>{_('push_av_id')}</b><code>{html.escape(av_id)}</code>",
-        ]
-        if av_date != _("push_unknown"):
-            lines.append(f"<b>{_('push_date')}</b>{html.escape(av_date)}")
-        if av_title:
-            lines.append(f"<b>{_('push_title_label')}</b>{html.escape(av_title[:80])}")
-
-        full_text = "\n".join(lines)
-
-        keyboard = InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        _("search_magnet_for", av_id),
-                        callback_data=_short_callback("magnet", av_id),
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        _("push_query_btn", actress_name),
-                        callback_data=_short_callback("favquery", actress_name),
-                    )
-                ],
-            ]
-        )
-
+        caption, keyboard = format_push_notification(actress_name, work, _t=_)
         await send_photo_with_fallback(
             bot=bot,
             chat_id=user_id,
-            img_url=img,
-            caption=full_text,
+            img_url=work.img or "",
+            caption=caption,
             proxy_addr=shared.config.proxy_addr,
             reply_markup=keyboard,
         )
