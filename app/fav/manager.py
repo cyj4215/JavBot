@@ -89,6 +89,17 @@ _SQL_INIT = [
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS user_seen_works (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        av_id VARCHAR(255) NOT NULL,
+        actress_name VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_user_av (user_id, av_id),
+        INDEX idx_usw_created (created_at)
+    )
+    """,
 ]
 
 
@@ -405,6 +416,25 @@ class FavoritesManager:
             logger.error(f"记录女优作品失败: {e}")
             return False
 
+    async def record_user_work(
+        self, user_id: int, actress_name: str, av_id: str
+    ) -> bool:
+        """按用户记录作品。同一用户第一次见到该番号返回 True，重复返回 False。"""
+        try:
+            async with self._pool.acquire() as conn, conn.cursor() as cur:
+                await cur.execute(
+                    """
+                    INSERT IGNORE INTO user_seen_works (user_id, av_id, actress_name)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (user_id, av_id, actress_name),
+                )
+                await conn.commit()
+                return cur.rowcount > 0  # type: ignore[no-any-return]
+        except Exception as e:
+            logger.error(f"记录用户作品失败: {e}")
+            return False
+
     # ------------------------------------------------------------------
     # Export favorites
     # ------------------------------------------------------------------
@@ -563,10 +593,16 @@ class FavoritesManager:
                     (cutoff_works,),
                 )
                 deleted_works = cur.rowcount
+                await cur.execute(
+                    "DELETE FROM user_seen_works WHERE created_at < %s",
+                    (cutoff_works,),
+                )
+                deleted_seen = cur.rowcount
                 await conn.commit()
-            if deleted_queries > 0 or deleted_works > 0:
+            if deleted_queries > 0 or deleted_works > 0 or deleted_seen > 0:
                 logger.info(
-                    f"清理过期数据: 删除 {deleted_queries} 条查询记录, {deleted_works} 条作品记录"
+                    f"清理过期数据: 删除 {deleted_queries} 条查询记录, {deleted_works} 条作品记录, "
+                    f"{deleted_seen} 条用户已见记录"
                 )
         except Exception as e:
             logger.error(f"清理过期数据失败: {e}")

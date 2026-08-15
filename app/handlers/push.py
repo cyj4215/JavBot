@@ -75,13 +75,10 @@ async def check_and_push_new_works(context: ContextTypes.DEFAULT_TYPE) -> None:
                         if not av_id:
                             continue
                         try:
-                            is_new = await favorites_manager.record_actress_work(
+                            is_new = await favorites_manager.record_user_work(
+                                user_id=user_id,
                                 actress_name=actress_name,
                                 av_id=av_id,
-                                title=work.title,
-                                date=work.date,
-                                url=work.url,
-                                img=work.img,
                             )
                             if is_new:
                                 logger.info(f"发现新作品: {actress_name} - {av_id}")

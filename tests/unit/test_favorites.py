@@ -114,3 +114,25 @@ async def test_cleanup_old_data(manager):
     await manager.cleanup_old_data(days=90)
     assert conn.cursor.return_value.__aenter__.return_value.execute.await_count >= 2
     conn.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_record_user_work_new(manager):
+    conn = _mock_conn(rowcount=1)
+    manager._pool.acquire = _mock_pool_acquire(conn)
+    assert await manager.record_user_work(123, "河北彩花", "SSIS-123") is True
+
+
+@pytest.mark.asyncio
+async def test_record_user_work_duplicate(manager):
+    conn = _mock_conn(rowcount=0)
+    manager._pool.acquire = _mock_pool_acquire(conn)
+    assert await manager.record_user_work(123, "河北彩花", "SSIS-123") is False
+
+
+@pytest.mark.asyncio
+async def test_record_user_work_same_av_different_user(manager):
+    """同番号不同用户 → 对第二个用户是'新作品'（按用户去重的核心）"""
+    conn = _mock_conn(rowcount=1)
+    manager._pool.acquire = _mock_pool_acquire(conn)
+    assert await manager.record_user_work(456, "河北彩花", "SSIS-123") is True

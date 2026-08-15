@@ -76,7 +76,7 @@ class TestCheckAndPushNewWorks:
         self._fav_mgr.get_favorites.return_value = {"items": [
             {"actress_name": "TestActress", "actress_id": "TA-001", "created_at": "2026-05-01"},
         ], "next_cursor": None, "total": 1}
-        self._fav_mgr.record_actress_work.return_value = True
+        self._fav_mgr.record_user_work.return_value = True
         monkeypatch.setattr(push_mod, "get_favorites_manager", AsyncMock(return_value=self._fav_mgr))
         self._svc = shared_global.service
         self._svc.query_profile_async.return_value = _fake_profile(
@@ -109,18 +109,18 @@ class TestCheckAndPushNewWorks:
         context = MagicMock()
         context.bot = AsyncMock()
         await check_and_push_new_works(context)
-        # record_actress_work called for the new work
-        self._fav_mgr.record_actress_work.assert_awaited_once()
+        # record_user_work called for the new work
+        self._fav_mgr.record_user_work.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_no_new_work_duplicate(self, shared_global):
         """Work already recorded → no notification."""
-        self._fav_mgr.record_actress_work.return_value = False
+        self._fav_mgr.record_user_work.return_value = False
         context = MagicMock()
         context.bot = AsyncMock()
         await check_and_push_new_works(context)
-        # record_actress_work called but returned False (already recorded)
-        self._fav_mgr.record_actress_work.assert_awaited_once()
+        # record_user_work called but returned False (already recorded)
+        self._fav_mgr.record_user_work.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_service_exception_handled(self, shared_global):
