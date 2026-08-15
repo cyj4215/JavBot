@@ -56,6 +56,7 @@ class JavBusService:
                 img = (av.get("img") or "").strip()
                 url = (av.get("url") or "").strip()
                 title = (av.get("title") or "").strip()
+                stars = self._extract_stars(av)
 
                 code, magnets = self.javbus.get_av_magnets(av_id, is_uncensored=is_uncensored)
                 magnet_links = []
@@ -76,6 +77,7 @@ class JavBusService:
                     img=img if img.startswith("http") else "",
                     url=url,
                     magnets=magnet_links,
+                    stars=stars,
                 )
                 self.av_meta_cache.set((av_id, is_uncensored), result.model_dump(mode="json"))
                 return result
@@ -83,6 +85,22 @@ class JavBusService:
             logging.getLogger(__name__).debug("获取AV元数据失败: av_id=%s", av_id, exc_info=True)
 
         return JavBusWork(id=av_id)
+
+    @staticmethod
+    def _extract_stars(av: dict[str, Any]) -> list[str]:
+        """从 jvav 返回的 av dict 中提取主演名单（键名不固定，防御式提取）。"""
+        stars: list[str] = []
+        for key in ("star_name", "stars", "star"):
+            value = av.get(key)
+            if isinstance(value, str) and value.strip():
+                stars.append(value.strip())
+            elif isinstance(value, list):
+                stars.extend(
+                    str(v).strip() for v in value if str(v).strip() and str(v).strip() not in stars
+                )
+            if stars:
+                break
+        return stars
 
     def build_latest_works(self, ids: list[str]) -> list[JavBusWork]:
         works: list[JavBusWork] = []

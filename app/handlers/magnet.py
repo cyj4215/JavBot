@@ -6,11 +6,13 @@ import html
 import logging
 from typing import TYPE_CHECKING
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from ..formatters import format_magnet_messages
 from ..secure_callback import resolve_callback as _resolve_callback
+from ..secure_callback import short_callback as _short_callback
 from ..services.text_utils import normalize_name
 from .common import make_t, require_auth, require_auth_callback, send_photo_with_fallback
 
@@ -66,16 +68,35 @@ async def run_magnet_reply(
 
     # Send AV detail card if available
     if av_meta and av_meta.title:
-        detail_lines = ["<b>🎬 作品详情</b>"]
-        detail_lines.append(f"<b>番号：</b><code>{html.escape(av_meta.id)}</code>")
-        detail_lines.append(f"<b>标题：</b>{html.escape(av_meta.title)}")
-        if av_meta.date and av_meta.date != "未知":
-            detail_lines.append(f"<b>日期：</b>{html.escape(av_meta.date)}")
+        detail_lines = [f"<b>{_('magnet_detail_title')}</b>"]
+        detail_lines.append(
+            f"<b>{_('magnet_av_id_label')}</b><code>{html.escape(av_meta.id)}</code>"
+        )
+        detail_lines.append(f"<b>{_('magnet_title_label')}</b>{html.escape(av_meta.title)}")
+        if av_meta.date and av_meta.date != "未知" and av_meta.date != _("work_date_unknown"):
+            detail_lines.append(f"<b>{_('magnet_date_label')}</b>{html.escape(av_meta.date)}")
+        detail_kb: list[list[InlineKeyboardButton]] = []
+        if av_meta.stars:
+            first_star = av_meta.stars[0]
+            stars_text = html.escape("、".join(av_meta.stars[:5]))
+            detail_lines.append(f"<b>{_('magnet_stars')}</b>{stars_text}")
+            detail_kb.append(
+                [
+                    InlineKeyboardButton(
+                        _("magnet_view_actress"),
+                        callback_data=_short_callback("favquery", first_star),
+                    )
+                ]
+            )
         with contextlib.suppress(Exception):
             await waiting.delete()
         try:
             await send_photo_with_fallback(
-                msg, av_meta.img, "\n".join(detail_lines), shared.config.proxy_addr
+                msg,
+                av_meta.img,
+                "\n".join(detail_lines),
+                shared.config.proxy_addr,
+                reply_markup=InlineKeyboardMarkup(detail_kb) if detail_kb else None,
             )
         except Exception:
             logging.getLogger(__name__).warning("发送封面图片失败", exc_info=True)
@@ -85,6 +106,23 @@ async def run_magnet_reply(
 
     # Send magnet results — per-message try/except so single bad button doesn't lose all
     messages = format_magnet_messages(query, items, _t=_)
+    if not items and av_meta and av_meta.url:
+        # 空结果 + 有详情页 → 用带链接按钮的引导消息替换无按钮提示
+        messages = [
+            (
+                _("magnet_no_result"),
+                InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                _("magnet_open_javbus"),
+                                url=av_meta.url,
+                            )
+                        ]
+                    ]
+                ),
+            )
+        ]
     for text, kb in messages:
         try:
             await msg.reply_text(

@@ -12,6 +12,7 @@ class JavBusWork(BaseModel):
     img: str = ""
     url: str = ""
     magnets: list[MagnetLink] = []
+    stars: list[str] = []
 
 
 class JavDbWork(BaseModel):
