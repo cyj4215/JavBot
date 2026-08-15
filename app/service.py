@@ -17,7 +17,6 @@ from .services.i18n import I18nService
 from .services.javdb_scraper import JavDbScraper
 from .services.rank_service import RankService
 from .services.text_utils import normalize_name
-from .session import BotSession
 
 try:
     from opencc import OpenCC
@@ -60,7 +59,6 @@ class ActressService:
             timeout=httpx.Timeout(20.0),
             proxy=proxy_addr if proxy_addr else None,
         )
-        self._bot_session = BotSession(proxy_addr)
         self._magnet_search = MagnetSearch(proxy_addr)
 
         _cache_dir = os.path.join(os.getcwd(), "data", "cache")
