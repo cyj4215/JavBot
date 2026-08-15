@@ -91,8 +91,15 @@ async def collect_health(shared, fav_mgr) -> str:
     lines.append(f"<b>🗄 {_('admin_mysql_hdr')}</b>")
     try:
         pool = fav_mgr._pool
-        lines.append(f"{_('admin_pool')}: {pool.size}/{pool.maxsize} | SELECT 1: {_('admin_ok')}")
+        probe = await fav_mgr._select_one("SELECT 1")
+        mysql_ok = probe is not None
     except Exception:
+        mysql_ok = False
+    if mysql_ok:
+        lines.append(
+            f"{_('admin_pool')}: {pool.size}/{pool.maxsize} | SELECT 1: {_('admin_ok')}"
+        )
+    else:
         lines.append(f"SELECT 1: {_('admin_fail')}")
 
     # 数据源
