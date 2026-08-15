@@ -1,6 +1,6 @@
 # 逐条推送消息格式美化 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 将逐条推送（instant push）消息改为「标题置顶式」排版：番号加粗置顶、标题引用块、胶囊标签、新增「查看详情」URL 按钮，并把排版逻辑抽到独立纯函数 formatter。
 
@@ -22,7 +22,7 @@
 
 **Note:** 只**新增**键（`push_actress_tag`/`push_date_tag`/`push_detail_btn`）并**改写** `push_title`，**保留** `push_actress`/`push_av_id`/`push_date`/`push_title_label` 四个旧键——`app/handlers/push.py:182-188` 仍引用它们，删除推迟到 Task 4 与 handler 重写同提交。
 
-- [ ] **Step 1: 修改 zh_CN.py**
+- [x] **Step 1: 修改 zh_CN.py**
 
 把（约 81-86 行）：
 
@@ -49,7 +49,7 @@
     "push_unknown": "未知",
 ```
 
-- [ ] **Step 2: 修改 en_US.py**
+- [x] **Step 2: 修改 en_US.py**
 
 把（约 81-86 行）：
 
@@ -76,7 +76,7 @@
     "push_unknown": "Unknown",
 ```
 
-- [ ] **Step 3: 修改 ja_JP.py**
+- [x] **Step 3: 修改 ja_JP.py**
 
 把（约 81-86 行）：
 
@@ -103,12 +103,12 @@
     "push_unknown": "不明",
 ```
 
-- [ ] **Step 4: 运行 i18n 测试验证三语言键齐全**
+- [x] **Step 4: 运行 i18n 测试验证三语言键齐全**
 
 Run: `pytest tests/unit/test_i18n.py tests/unit/test_i18n_coverage.py -v --no-header`
 Expected: 全部 PASS（键增删后三语言仍然一致、无空值；handler 引用的键仍全部存在）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/services/i18n/zh_CN.py app/services/i18n/en_US.py app/services/i18n/ja_JP.py
@@ -122,7 +122,7 @@ git commit -m "feat(i18n): new push notification keys (context line, tags, detai
 **Files:**
 - Test: `tests/unit/test_formatters.py`（文件末尾追加 `TestFormatPushNotification` 类）
 
-- [ ] **Step 1: 追加测试类**
+- [x] **Step 1: 追加测试类**
 
 在 `tests/unit/test_formatters.py` 末尾追加（顶部已 import `InlineKeyboardButton, InlineKeyboardMarkup`；补 import `from app.formatters.push import format_push_notification` 和 `from app.models import MergedWork`——MergedWork 已由 `app.models` 导出）：
 
@@ -199,7 +199,7 @@ class TestFormatPushNotification:
         assert "<blockquote>" + "X" * 200 + "</blockquote>" in caption
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `pytest tests/unit/test_formatters.py::TestFormatPushNotification -v --no-header`
 Expected: FAIL —— `ModuleNotFoundError: No module named 'app.formatters.push'`
@@ -212,7 +212,7 @@ Expected: FAIL —— `ModuleNotFoundError: No module named 'app.formatters.push
 - Create: `app/formatters/push.py`
 - Modify: `app/formatters/__init__.py:1-14`
 
-- [ ] **Step 1: 创建 formatter**
+- [x] **Step 1: 创建 formatter**
 
 `app/formatters/push.py` 完整内容：
 
@@ -270,7 +270,7 @@ def format_push_notification(
 ".join(lines), InlineKeyboardMarkup([row])
 ```
 
-- [ ] **Step 2: 在 `app/formatters/__init__.py` 导出**
+- [x] **Step 2: 在 `app/formatters/__init__.py` 导出**
 
 把：
 
@@ -287,12 +287,12 @@ from .push import format_push_notification
 
 并把 `__all__` 加入 `"format_push_notification"`（字母序：在 `format_profile` 之前）。
 
-- [ ] **Step 3: 运行测试确认通过**
+- [x] **Step 3: 运行测试确认通过**
 
 Run: `pytest tests/unit/test_formatters.py -v --no-header`
 Expected: `TestFormatPushNotification` 全部 PASS，其余既有 formatter 测试不受影响
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add app/formatters/push.py app/formatters/__init__.py tests/unit/test_formatters.py
@@ -308,7 +308,7 @@ git commit -m "feat(push): extract format_push_notification formatter (B2 layout
 - Modify: `app/services/i18n/zh_CN.py` / `app/services/i18n/en_US.py` / `app/services/i18n/ja_JP.py`（删除已不使用的四个旧键）
 - Test: `tests/unit/test_handlers_push.py:152-175`（应保持通过，不改）
 
-- [ ] **Step 1: 删除三语言中已不使用的四个旧键**
+- [x] **Step 1: 删除三语言中已不使用的四个旧键**
 
 `send_new_work_notification` 切换为 formatter（Step 3）后，handler 不再引用 `push_actress`/`push_av_id`/`push_date`/`push_title_label`。在三个语言文件中删除这四行（位于 `push_title` 与 `push_actress_tag` 之间）：
 
@@ -323,7 +323,7 @@ git commit -m "feat(push): extract format_push_notification formatter (B2 layout
 
 > 旧键必须与 handler 引用移除（Step 3）在**同一提交**中删除，避免出现引用缺失键的中间状态。提交前运行 `pytest tests/unit/test_i18n.py tests/unit/test_i18n_coverage.py -v --no-header` 确认绿色。
 
-- [ ] **Step 2: 添加 import**
+- [x] **Step 2: 添加 import**
 
 在 `app/handlers/push.py` 的 import 区（现有 `from ..models import MergedWork` 之后）加：
 
@@ -331,7 +331,7 @@ git commit -m "feat(push): extract format_push_notification formatter (B2 layout
 from ..formatters.push import format_push_notification
 ```
 
-- [ ] **Step 3: 替换函数体**
+- [x] **Step 3: 替换函数体**
 
 把 `send_new_work_notification` 中从 `try:`（当前 173 行）到函数结尾的整段（包含手拼 lines、keyboard、send_photo_with_fallback 调用）替换为：
 
@@ -352,17 +352,17 @@ from ..formatters.push import format_push_notification
 
 同时删除函数中不再使用的 `av_id`、`av_date`、`av_title`、`img` 变量和 `lines`、`keyboard` 的旧构建代码。若 `html` import 在文件其他地方已无使用，一并移除（`grep -n 'html.' app/handlers/push.py` 确认）。
 
-- [ ] **Step 4: 运行 handler 测试**
+- [x] **Step 4: 运行 handler 测试**
 
 Run: `pytest tests/unit/test_handlers_push.py -v --no-header`
 Expected: 全部 PASS（现有断言只查 `bot.send_message` 被调用——无图时 `send_photo_with_fallback` 走 `_send_text` 路径）
 
-- [ ] **Step 5: 运行相关测试全量确认**
+- [x] **Step 5: 运行相关测试全量确认**
 
 Run: `pytest tests/unit/test_formatters.py tests/unit/test_handlers_push.py tests/unit/test_push_digest.py tests/unit/test_i18n.py tests/unit/test_i18n_coverage.py -v --no-header`
 Expected: 全部 PASS
 
-- [ ] **Step 6: Commit**（连同 Step 1 删除的旧键一起提交）
+- [x] **Step 6: Commit**（连同 Step 1 删除的旧键一起提交）
 
 ```bash
 git add app/handlers/push.py app/services/i18n/zh_CN.py app/services/i18n/en_US.py app/services/i18n/ja_JP.py
@@ -375,22 +375,22 @@ git commit -m "refactor(push): use format_push_notification in send_new_work_not
 
 **Files:** 无新增改动，验证用
 
-- [ ] **Step 1: ruff 检查与格式化**
+- [x] **Step 1: ruff 检查与格式化**
 
 Run: `ruff check app/ && ruff format --check app/`
 Expected: 无错误；若有 format drift，运行 `ruff format app/` 后重新检查
 
-- [ ] **Step 2: mypy 严格检查**
+- [x] **Step 2: mypy 严格检查**
 
 Run: `mypy app/`
 Expected: 无错误（formatter 参数/返回均有标注，`_t` 为 `Callable[..., str]` 与既有 formatter 一致）
 
-- [ ] **Step 3: 全量单元测试**
+- [x] **Step 3: 全量单元测试**
 
 Run: `pytest tests/unit/ -v --no-header`
 Expected: 全部 PASS（既有测试不受影响）
 
-- [ ] **Step 4: Commit（如有 lint 修复）**
+- [x] **Step 4: Commit（如有 lint 修复）**
 
 ```bash
 git add -A
