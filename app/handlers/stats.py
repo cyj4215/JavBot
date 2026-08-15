@@ -34,7 +34,7 @@ async def stats_cmd(
     stats = await fav_mgr.get_all_stats()
 
     if not stats:
-        await msg.reply_text(_("stats_title"))
+        await msg.reply_text(_("stats_empty"))
         return
 
     lines = [f"<b>📊 {_('stats_title')}</b>", ""]

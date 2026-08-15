@@ -164,10 +164,10 @@ async def rank_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     q = update.callback_query
     if not q or not q.message:
         return
-    if not is_allowed(update, shared.config.allowed_user_ids):
-        await q.answer("无权限使用", show_alert=True)
-        return
     _ = await make_t(shared, update)
+    if not is_allowed(update, shared.config.allowed_user_ids):
+        await q.answer(_("no_permission_alert"), show_alert=True)
+        return
     data = q.data or ""
 
     retry_match = re.match(r"^rank_retry:(\d{1,2}):(\d)$", data)

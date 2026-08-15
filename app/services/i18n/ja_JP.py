@@ -118,6 +118,7 @@ TRANSLATIONS: dict[str, str] = {
     "lang_set": "✅ {} に切り替えました",
     "lang_usage": "使い方: /language コード\n対応言語：zh_CN (中文), en_US (English), ja_JP (日本語)",
     "stats_title": "使用統計",
+    "stats_empty": "📊 統計データはまだありません。",
     "stat_total_searches": "🔍 検索回数",
     "stat_profiles_viewed": "👩 プロフィール表示",
     "stat_magnet_searches": "🧲 マグネット検索",

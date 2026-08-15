@@ -118,6 +118,7 @@ TRANSLATIONS: dict[str, str] = {
     "lang_set": "✅ Switched to {}",
     "lang_usage": "Usage: /language code\nSupported: zh_CN (中文), en_US (English), ja_JP (日本語)",
     "stats_title": "Usage Statistics",
+    "stats_empty": "📊 No statistics yet.",
     "stat_total_searches": "🔍 Searches",
     "stat_profiles_viewed": "👩 Profiles Viewed",
     "stat_magnet_searches": "🧲 Magnet Searches",

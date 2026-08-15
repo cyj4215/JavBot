@@ -118,6 +118,7 @@ TRANSLATIONS: dict[str, str] = {
     "lang_set": "✅ 已切换至 {}",
     "lang_usage": "用法：/language 代码\n支持的语言：zh_CN (中文), en_US (English), ja_JP (日本語)",
     "stats_title": "使用统计",
+    "stats_empty": "📊 暂无统计数据。",
     "stat_total_searches": "🔍 搜索次数",
     "stat_profiles_viewed": "👩 查看女优资料",
     "stat_magnet_searches": "🧲 磁力搜索次数",
