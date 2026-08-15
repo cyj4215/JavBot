@@ -5,7 +5,7 @@ import pytest
 
 from app.fav import FavoritesManager
 from app.models import MergedWork
-from tests.unit.test_favorites import _mock_conn, _mock_pool_acquire
+from tests.unit.test_favorites import _mock_pool_acquire
 
 
 @pytest.fixture

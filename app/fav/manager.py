@@ -142,7 +142,7 @@ class FavoritesManager:
             await conn.commit()
 
     async def _ensure_push_mode_column(self) -> None:
-        """幂等迁移：为旧库补充 push_mode 列，并回填历史开关状态。"""
+        """幂等迁移：为旧库补充 push_mode 列，并回填历史开关状态（单事务）。"""
         try:
             row = await self._select_one(
                 """
@@ -153,13 +153,15 @@ class FavoritesManager:
             )
             if row and row["cnt"]:
                 return
-            await self._execute(
-                "ALTER TABLE user_push_settings "
-                "ADD COLUMN push_mode VARCHAR(10) NOT NULL DEFAULT 'instant'"
-            )
-            await self._execute(
-                "UPDATE user_push_settings SET push_mode = 'off' WHERE push_enabled = 0"
-            )
+            async with self._pool.acquire() as conn, conn.cursor() as cur:
+                await cur.execute(
+                    "ALTER TABLE user_push_settings "
+                    "ADD COLUMN push_mode VARCHAR(10) NOT NULL DEFAULT 'instant'"
+                )
+                await cur.execute(
+                    "UPDATE user_push_settings SET push_mode = 'off' WHERE push_enabled = 0"
+                )
+                await conn.commit()
             logger.info("user_push_settings.push_mode 列迁移完成")
         except Exception as e:
             logger.error(f"迁移 push_mode 列失败: {e}")
