@@ -162,10 +162,15 @@ def migrate_sqlite_to_mysql(sqlite_path: str, mysql_config: dict) -> None:
         for row in rows:
             mcur.execute(
                 """
-                INSERT IGNORE INTO user_push_settings (user_id, push_enabled, last_check)
-                VALUES (%s, %s, %s)
+                INSERT IGNORE INTO user_push_settings (user_id, push_enabled, push_mode, last_check)
+                VALUES (%s, %s, %s, %s)
                 """,
-                (row["user_id"], row["push_enabled"], row["last_check"]),
+                (
+                    row["user_id"],
+                    row["push_enabled"],
+                    "off" if not row["push_enabled"] else "instant",
+                    row["last_check"],
+                ),
             )
         mysql_conn.commit()
         print(f"  Push settings: {len(rows)} rows")

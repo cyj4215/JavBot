@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 _MAX_CONCURRENT_QUERIES = 5
 _PUSH_MODES = ("instant", "digest", "off")
+_DIGEST_MAX_WORKS = 15
 _digest_queue: dict[int, list[dict]] = {}
 
 
@@ -226,7 +227,7 @@ async def push_toggle_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, ms
             "instant": _("push_status", _("push_mode_instant_btn")),
             "digest": _("push_status", _("push_mode_digest_btn")),
             "off": _("push_status", _("push_mode_off_btn")),
-        }[mode]
+        }.get(mode, _("push_status", _("push_mode_instant_btn")))
         keyboard = InlineKeyboardMarkup(
             [
                 [
@@ -296,6 +297,10 @@ async def check_and_send_digests(context: ContextTypes.DEFAULT_TYPE) -> None:
     if not shared.config.push_enabled_global:
         return
     if not getattr(shared.config, "push_digest_enabled", True):
+        dropped = sum(len(v) for v in _digest_queue.values())
+        _digest_queue.clear()
+        if dropped:
+            logger.info("digest 全局关闭，丢弃积压 %d 条", dropped)
         return
     if not _digest_queue:
         return
@@ -326,11 +331,19 @@ async def send_digest_message(bot: Bot, user_id: int, items: list[dict]) -> None
     for item in items:
         by_actress.setdefault(item["actress_name"], []).append(item["work"])
 
-    lines = [f"<b>{_('push_digest_title', len(items))}</b>", ""]
+    lines = [f"<b>{_('push_digest_title', min(len(items), _DIGEST_MAX_WORKS))}</b>", ""]
     keyboard_rows: list[list[InlineKeyboardButton]] = []
+    displayed = 0
+    hidden = 0
     for actress_name, works in by_actress.items():
+        if displayed >= _DIGEST_MAX_WORKS:
+            hidden += len(works)
+            continue
         lines.append(f"<b>👩 {html.escape(actress_name)}</b>")
         for work in works[:3]:
+            if displayed >= _DIGEST_MAX_WORKS:
+                hidden += 1
+                continue
             av_id = work.id or ""
             date = (work.date or "").strip()
             title = (work.title or "").strip()[:40]
@@ -348,9 +361,11 @@ async def send_digest_message(bot: Bot, user_id: int, items: list[dict]) -> None
                         )
                     ]
                 )
-        if len(works) > 3:
-            lines.append(_("push_digest_more", len(works) - 3))
+            displayed += 1
         lines.append("")
+
+    if hidden > 0:
+        lines.append(_("push_digest_more", hidden))
 
     img_url = ""
     for item in items:

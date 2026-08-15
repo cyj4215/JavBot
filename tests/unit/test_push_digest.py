@@ -102,3 +102,59 @@ class TestSendDigestMessage:
         assert "A-001" in text
         assert "A-002" in text
         assert "B-001" in text
+
+
+class TestCheckAndSendDigests:
+    """check_and_send_digests: 发送后清队、失败保留、禁用时丢弃。"""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, shared_global, monkeypatch):
+        import app.handlers.push as push_mod
+        self._fav_mgr = AsyncMock()
+        self._fav_mgr.get_user_language.return_value = "zh_CN"
+        monkeypatch.setattr(
+            push_mod, "get_favorites_manager", AsyncMock(return_value=self._fav_mgr)
+        )
+        shared_global.config.push_enabled_global = True
+        shared_global.config.push_digest_enabled = True
+        push_mod._digest_queue.clear()
+
+    @pytest.mark.asyncio
+    async def test_sends_and_clears(self, shared_global, monkeypatch):
+        from app.handlers.push import _digest_queue, check_and_send_digests
+        _digest_queue[12345] = [
+            {"actress_name": "A", "work": MergedWork(id="A-001", img="", date="2026-08-15", title="T")}
+        ]
+        mocked_send = AsyncMock()
+        monkeypatch.setattr("app.handlers.push.send_digest_message", mocked_send)
+        context = MagicMock()
+        context.bot = AsyncMock()
+        await check_and_send_digests(context)
+        mocked_send.assert_awaited_once()
+        assert _digest_queue == {}
+
+    @pytest.mark.asyncio
+    async def test_keeps_on_failure(self, shared_global, monkeypatch):
+        from app.handlers.push import _digest_queue, check_and_send_digests
+        _digest_queue[12345] = [
+            {"actress_name": "A", "work": MergedWork(id="A-001", img="", date="2026-08-15", title="T")}
+        ]
+        async def boom(bot, uid, items):
+            raise RuntimeError("send failed")
+        monkeypatch.setattr("app.handlers.push.send_digest_message", boom)
+        context = MagicMock()
+        context.bot = AsyncMock()
+        await check_and_send_digests(context)
+        assert len(_digest_queue.get(12345, [])) == 1
+
+    @pytest.mark.asyncio
+    async def test_disabled_drops_queue(self, shared_global):
+        from app.handlers.push import _digest_queue, check_and_send_digests
+        shared_global.config.push_digest_enabled = False
+        _digest_queue[12345] = [
+            {"actress_name": "A", "work": MergedWork(id="A-001", img="", date="2026-08-15", title="T")}
+        ]
+        context = MagicMock()
+        context.bot = AsyncMock()
+        await check_and_send_digests(context)
+        assert _digest_queue == {}
