@@ -1,7 +1,9 @@
 """Tests for works browser: _build_works_page, works list capping."""
 
+import pytest
+
 from app.handlers.works import _build_works_page
-from app.models import MergedWork
+from app.models import ActressProfile, MergedWork
 
 
 def _make_work(av_id, date="2026-05-01", title="Test Title", img="https://javbus.com/cover/xxx.jpg"):
@@ -83,16 +85,13 @@ class TestBuildWorksPage:
         assert len(last_row) == 1
         assert last_row[0].callback_data.startswith("favquery:")
 
-    def test_works_list_capped_at_three(self):
-        """Simulate the 3-page cap from works_callback: works[:3]."""
-        works = [
-            _make_work(f"A-{i:03d}", date=f"2026-05-{i:02d}")
-            for i in range(1, 10)
-        ]
-        capped = works[:3]
-        assert len(capped) == 3
-        caption, keyboard, _ = _build_works_page(capped, "Test", 0, _t)
-        assert "works_page:1:3" in caption
+    def test_full_list_no_cap(self):
+        """浏览器基于完整合并列表翻页，不受 3 条硬编码限制。"""
+        works = [_make_work(f"A-{i:03d}") for i in range(10)]
+        caption, keyboard, _ = _build_works_page(works, "Test", 5, _t)
+        assert "A-005" in caption
+        assert "works_page:6:10" in caption
+        assert keyboard is not None
 
     def test_capped_works_navigation_ends_at_3(self):
         """Verify navigation of 3 capped works works correctly."""
@@ -121,3 +120,26 @@ class TestBuildWorksPage:
                 for btn in row:
                     if hasattr(btn, 'callback_data') and isinstance(btn.callback_data, str):
                         assert not btn.callback_data.startswith("magnet:")
+
+
+class TestWorksCallbackFullList:
+    """works_callback 把完整列表传给翻页器（不再截断为 3）。"""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, shared_global):
+        from app.handlers.works import works_callback
+        self._handler = works_callback
+        profile = ActressProfile(
+            found=True, query="T", star_name="Test", star_id="T-1",
+            latest_works=[MergedWork(id=f"A-{i:03d}", img="") for i in range(10)],
+        )
+        shared_global.service.query_profile_async.return_value = profile
+
+    @pytest.mark.asyncio
+    async def test_browses_beyond_three_works(self, mock_update, mock_context, mock_q):
+        from app.secure_callback import short_callback
+        mock_q.data = short_callback("works", "Test|9")
+        mock_update.callback_query = mock_q
+        await self._handler(mock_update, mock_context)
+        text = mock_q.edit_message_text.call_args[0][0]
+        assert "A-009" in text

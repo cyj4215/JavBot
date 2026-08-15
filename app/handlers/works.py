@@ -135,7 +135,6 @@ async def works_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, q, 
     await q.answer()
 
     works = await _get_profile_works(star_name, shared)
-    works = works[:3]
     caption, keyboard, img_url = _build_works_page(works, star_name, index, _)
 
     if not works:
