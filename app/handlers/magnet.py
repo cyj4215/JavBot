@@ -12,7 +12,7 @@ from telegram.ext import ContextTypes
 from ..formatters import format_magnet_messages
 from ..secure_callback import resolve_callback as _resolve_callback
 from ..services.text_utils import normalize_name
-from .common import require_auth, require_auth_callback, send_photo_with_fallback
+from .common import make_t, require_auth, require_auth_callback, send_photo_with_fallback
 
 if TYPE_CHECKING:
     from telegram import Message, Update
@@ -25,7 +25,13 @@ async def run_magnet_reply(
         from . import _get_shared
 
         shared = _get_shared()
-    waiting = await msg.reply_text("正在查询，请稍等...")
+
+    lang = shared.service.i18n.DEFAULT_LANG
+
+    def _(key, *a):
+        return shared.service.i18n.t(key, lang, *a)
+
+    waiting = await msg.reply_text(_("magnet_loading"))
     timeout = shared.config.magnet_timeout
 
     # Fetch AV meta (timeout-separated so slow meta doesn't block magnets)
@@ -58,11 +64,6 @@ async def run_magnet_reply(
     except Exception:
         pass
 
-    lang = shared.service.i18n.DEFAULT_LANG
-
-    def _(key, *a):
-        return shared.service.i18n.t(key, lang, *a)
-
     # Send AV detail card if available
     if av_meta and av_meta.title:
         detail_lines = ["<b>🎬 作品详情</b>"]
@@ -80,7 +81,7 @@ async def run_magnet_reply(
             logging.getLogger(__name__).warning("发送封面图片失败", exc_info=True)
     else:
         with contextlib.suppress(Exception):
-            await waiting.edit_text("正在搜索磁力，请稍等...")
+            await waiting.edit_text(_("magnet_searching"))
 
     # Send magnet results — per-message try/except so single bad button doesn't lose all
     messages = format_magnet_messages(query, items, _t=_)
@@ -98,9 +99,10 @@ async def run_magnet_reply(
 
 @require_auth
 async def magnet_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared) -> None:
+    _ = await make_t(shared, update)
     query = " ".join(context.args).strip()
     if not query:
-        await msg.reply_text("用法：/search 关键词\n例如：/search SSIS-123")
+        await msg.reply_text(_("magnet_usage"))
         return
     user = update.effective_user
     await run_magnet_reply(msg, query, shared=shared, user_id=user.id if user else None)

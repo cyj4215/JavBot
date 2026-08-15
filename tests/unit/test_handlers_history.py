@@ -16,43 +16,48 @@ class TestRenderHistoryPage:
             for i in range(count)
         ]
 
+    def _t(self, key, *args):
+        if args:
+            return f"{key}:{':'.join(str(a) for a in args)}"
+        return key
+
     def test_empty_queries(self):
-        text, markup = _render_history_page([], 1, 0)
-        assert "📜" in text
-        assert "0" in text
+        text, markup = _render_history_page([], 1, 0, _t=self._t)
+        assert "history_title" in text
+        assert "history_total:0" in text
         assert markup is not None
 
     def test_single_page(self):
         queries = self._make_queries(5)
-        text, markup = _render_history_page(queries, 1, 5)
+        text, markup = _render_history_page(queries, 1, 5, _t=self._t)
         assert "Actress 0" in text
         assert "Actress 4" in text
-        assert "5 条" in text
+        assert "history_total:5" in text
         assert markup is not None
 
     def test_pagination_buttons_appear(self):
         queries = self._make_queries(15)
-        text, markup = _render_history_page(queries, 1, 15)
-        assert "第 1/2" in text
+        text, markup = _render_history_page(queries, 1, 15, _t=self._t)
+        assert "fav_page_info:1:2" in text
         keyboard = markup.inline_keyboard
         has_next = any("▶️" in btn.text for row in keyboard for btn in row)
         assert has_next
 
     def test_page_2(self):
         queries = self._make_queries(15)
-        text, _ = _render_history_page(queries, 2, 15)
-        assert "第 2/2" in text
+        text, _ = _render_history_page(queries, 2, 15, _t=self._t)
+        assert "fav_page_info:2:2" in text
 
     def test_prev_button_on_page_2(self):
         queries = self._make_queries(15)
-        text, markup = _render_history_page(queries, 2, 15)
+        text, markup = _render_history_page(queries, 2, 15, _t=self._t)
         keyboard = markup.inline_keyboard
         has_prev = any("◀️" in btn.text for row in keyboard for btn in row)
         assert has_prev
 
     def test_no_nav_on_single_page(self):
         queries = self._make_queries(5)
-        text, markup = _render_history_page(queries, 1, 5)
+        text, markup = _render_history_page(queries, 1, 5, _t=self._t)
         keyboard = markup.inline_keyboard
         for row in keyboard:
             for btn in row:
@@ -61,14 +66,14 @@ class TestRenderHistoryPage:
 
     def test_re_search_buttons(self):
         queries = self._make_queries(3)
-        text, markup = _render_history_page(queries, 1, 3)
+        text, markup = _render_history_page(queries, 1, 3, _t=self._t)
         keyboard = markup.inline_keyboard
         # Each query should have a search button
         assert len(keyboard) >= 3
 
     def test_menu_return_button(self):
         queries = [{"actress_name": "A", "query_time": "2026-07-01 10:00:00"}]
-        text, markup = _render_history_page(queries, 1, 1)
+        text, markup = _render_history_page(queries, 1, 1, _t=self._t)
         assert any(
             "menu:search" in btn.callback_data
             for row in markup.inline_keyboard for btn in row
@@ -79,7 +84,7 @@ class TestRenderHistoryPage:
             {"actress_name": "SSIS-123", "query_time": "2026-07-01 10:00:00"},
             {"actress_name": "三上悠亜", "query_time": "2026-07-01 10:00:00"},
         ]
-        _, markup = _render_history_page(queries, 1, 2)
+        _, markup = _render_history_page(queries, 1, 2, _t=self._t)
         keyboard = markup.inline_keyboard
         magnet_btn = keyboard[0][0]
         search_btn = keyboard[1][0]

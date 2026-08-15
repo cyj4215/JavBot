@@ -85,7 +85,12 @@ def mock_service():
     service.query_profile_async = AsyncMock()
     service.get_av_magnets = MagicMock()
     service.i18n = MagicMock()
-    service.i18n.t = MagicMock(side_effect=lambda key, lang=None, *a: key)
+    # Delegate to the real I18nService so handler tests see actual user-facing
+    # text (assertions on zh strings stay meaningful after the i18n migration).
+    from app.services.i18n import I18nService
+
+    _i18n = I18nService()
+    service.i18n.t = MagicMock(side_effect=lambda key, lang=None, *a: _i18n.t(key, lang, *a))
     service.i18n.DEFAULT_LANG = "zh_CN"
     return service
 

@@ -250,7 +250,7 @@ async def favorites_latest_cmd(
         await msg.reply_text(_("fav_empty"))
         return
 
-    waiting = await msg.reply_text(f"正在查询 {len(favorites)} 位收藏女优的最新作品...")
+    waiting = await msg.reply_text(_("fav_latest_querying", len(favorites)))
 
     try:
 
@@ -279,7 +279,7 @@ async def favorites_latest_cmd(
         all_latest_works.sort(key=lambda x: x.get("date", ""), reverse=True)
 
         if not all_latest_works:
-            await waiting.edit_text("暂无最新作品信息。")
+            await waiting.edit_text(_("fav_latest_empty"))
             return
 
         await waiting.delete()
@@ -288,24 +288,24 @@ async def favorites_latest_cmd(
         for i in range(0, len(all_latest_works), batch_size):
             batch = all_latest_works[i : i + batch_size]
 
-            lines = ["<b>🎬 收藏女优最新作品</b>", ""]
+            lines = [f"<b>{_('fav_favlatest_title')}</b>", ""]
 
             for work in batch:
-                actress_name = html.escape(work.get("actress_name", "未知"))
-                av_id = html.escape(work.get("id", "未知"))
-                av_date = html.escape(work.get("date", "未知日期"))
+                actress_name = html.escape(work.get("actress_name") or _("fav_unknown_actress"))
+                av_id = html.escape(work.get("id") or _("fav_unknown_actress"))
+                av_date = html.escape(work.get("date") or _("fav_unknown_date"))
                 av_title = html.escape(work.get("title", "")[:40])
 
                 lines.append(f"<b>👩 {actress_name}</b>")
                 lines.append(f"🎬 <code>{av_id}</code>")
-                if av_date != "未知日期":
+                if av_date != _("fav_unknown_date"):
                     lines.append(f"📅 {av_date}")
                 if av_title:
                     lines.append(f"📝 {av_title}")
                 lines.append("")
 
             if i + batch_size < len(all_latest_works):
-                lines.append(f"...还有 {len(all_latest_works) - i - batch_size} 部作品")
+                lines.append(_("fav_more_works", len(all_latest_works) - i - batch_size))
 
             await msg.reply_text(
                 "\n".join(lines), parse_mode=ParseMode.HTML, disable_web_page_preview=True
@@ -316,7 +316,7 @@ async def favorites_latest_cmd(
 
         log_handler_error(exc, "favorites latest works query failed")
         with contextlib.suppress(Exception):
-            await waiting.edit_text("查询失败，请稍后再试。")
+            await waiting.edit_text(_("fav_latest_failed"))
 
 
 @require_auth_callback
@@ -324,10 +324,10 @@ async def callback_favquery(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     """Handle favquery: callback — query actress profile from favorites list."""
     from .search import run_search_reply
 
+    _ = await make_t(shared, update)
     data = q.data or ""
     actress_name = _resolve_callback("favquery", data)
     if actress_name is None:
-        _ = await make_t(shared, update)
         await q.answer(_("fav_expired"), show_alert=True)
         return
 
@@ -344,10 +344,10 @@ async def callback_favquery(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 @require_auth_callback
 async def callback_favnow(update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared) -> None:
     """Handle favnow: callback — add actress to favorites."""
+    _ = await make_t(shared, update)
     data = q.data or ""
     actress_name = _resolve_callback("favnow", data)
     if actress_name is None:
-        _ = await make_t(shared, update)
         await q.answer(_("fav_expired"), show_alert=True)
         return
 
@@ -355,7 +355,7 @@ async def callback_favnow(update: Update, context: ContextTypes.DEFAULT_TYPE, q,
     try:
         profile = await shared.service.query_profile_async(actress_name)
         if not profile.found:
-            await q.answer(f"未找到女优: {actress_name}", show_alert=True)
+            await q.answer(_("fav_found", actress_name), show_alert=True)
             return
         actress_data = {"extra_info": profile.extra_info} if profile.extra_info else None
         user = update.effective_user
@@ -369,24 +369,24 @@ async def callback_favnow(update: Update, context: ContextTypes.DEFAULT_TYPE, q,
             user.id, profile.star_name, profile.star_id, actress_data
         )
         if success:
-            await q.answer(f"✅ 已收藏: {profile.star_name}")
+            await q.answer(_("fav_added", profile.star_name))
             await _update_favorite_keyboard(q, True, profile.star_name)
         else:
-            await q.answer("收藏失败", show_alert=True)
+            await q.answer(_("fav_add_failed_alert"), show_alert=True)
     except Exception as exc:
         from .common import log_handler_error
 
         log_handler_error(exc, "favorite favnow failed")
-        await q.answer("收藏失败", show_alert=True)
+        await q.answer(_("fav_add_failed_alert"), show_alert=True)
 
 
 @require_auth_callback
 async def callback_unfavnow(update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared) -> None:
     """Handle unfavnow: callback — remove actress from favorites."""
+    _ = await make_t(shared, update)
     data = q.data or ""
     actress_name = _resolve_callback("unfavnow", data)
     if actress_name is None:
-        _ = await make_t(shared, update)
         await q.answer(_("fav_expired"), show_alert=True)
         return
 
@@ -395,15 +395,15 @@ async def callback_unfavnow(update: Update, context: ContextTypes.DEFAULT_TYPE, 
             update.effective_user.id, actress_name
         )
         if success:
-            await q.answer(f"✅ 已取消收藏: {actress_name}")
+            await q.answer(_("fav_removed", actress_name))
             await _update_favorite_keyboard(q, False, actress_name)
         else:
-            await q.answer("取消收藏失败", show_alert=True)
+            await q.answer(_("fav_remove_failed_alert"), show_alert=True)
     except Exception as exc:
         from .common import log_handler_error
 
         log_handler_error(exc, "favorite unfavnow failed")
-        await q.answer("取消收藏失败", show_alert=True)
+        await q.answer(_("fav_remove_failed_alert"), show_alert=True)
 
 
 async def _edit_or_send(q, text, reply_markup=None):

@@ -99,7 +99,7 @@ async def run_search_reply(
     if user_id:
         cancel_data = _short_callback("cancel", str(user_id))
         cancel_kb = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("⏹ 取消", callback_data=cancel_data)]]
+            [[InlineKeyboardButton(_("search_cancel_btn"), callback_data=cancel_data)]]
         )
         task = asyncio.current_task()
         if task:
@@ -226,21 +226,22 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE, msg: Messa
 async def cancel_search_callback(
     update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared
 ) -> None:
+    _ = await make_t(shared, update)
     data = q.data or ""
     uid_str = _resolve_callback("cancel", data)
     if uid_str is None:
-        await q.answer("该操作已过期", show_alert=True)
+        await q.answer(_("fav_expired"), show_alert=True)
         return
 
     caller_id = update.effective_user.id
     if int(uid_str) != caller_id:
-        await q.answer("无权取消他人的查询", show_alert=True)
+        await q.answer(_("search_cancel_denied"), show_alert=True)
         return
 
     task = _pending_queries.pop(caller_id, None)
     if task and not task.done():
         task.cancel()
-        await q.answer("已取消")
-        await q.edit_message_text("⏹ 已取消查询")
+        await q.answer(_("search_cancelled"))
+        await q.edit_message_text(_("search_cancel_done"))
     else:
-        await q.answer("没有正在进行的查询")
+        await q.answer(_("search_none_running"))

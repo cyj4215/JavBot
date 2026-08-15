@@ -40,7 +40,7 @@ class TestWorksCallback:
         """Expired HMAC token → show alert, don't answer normally."""
         mock_q.data = "works:bad"
         await self._call(mock_update, mock_context)
-        mock_q.answer.assert_awaited_once_with("该链接已过期", show_alert=True)
+        mock_q.answer.assert_awaited_once_with("该链接已过期，请重新搜索", show_alert=True)
 
     async def test_empty_works_still_answers(self, mock_update, mock_context, mock_q):
         """No works found → answer (no error), don't crash."""
@@ -108,21 +108,22 @@ class TestWorksCallback:
         await self._call(mock_update, mock_context)
         mock_q.edit_message_caption.assert_awaited_once()
 
-    async def test_works_capped_at_three(self, mock_update, mock_context, mock_q):
-        """Works list capped to 3 → no ▶️ at index 2 (last of 3, not last of 9)."""
+    async def test_page_2_of_9_has_next(self, mock_update, mock_context, mock_q):
+        """Index 2 of 9 works → ▶️ next button present (uncapped browsing)."""
         many_works = [MergedWork(id=f"TEST-{i:03d}", img="", date="", title="")
                       for i in range(1, 10)]
         self._svc.query_profile_async.return_value = _fake_profile(
             found=True, star_name="Many", latest_works=many_works
         )
         mock_q.message.photo = None
-        mock_q.data = _signed_works("Many|2")  # last page after cap
+        mock_q.data = _signed_works("Many|2")  # middle of 9, not the last of a capped 3
         await self._call(mock_update, mock_context)
-        # After cap: works=[TEST-001, TEST-002, TEST-003], index=2 → last page → no ▶️
-        # Without cap: index=2 of 9 → has ▶️
         mock_q.edit_message_text.assert_awaited_once()
-        args, _ = mock_q.edit_message_text.call_args
+        args, kwargs = mock_q.edit_message_text.call_args
         assert "TEST-003" in args[0]
+        markup = kwargs.get("reply_markup")
+        assert markup is not None
+        assert any("▶️" in btn.text for row in markup.inline_keyboard for btn in row)
 
     async def test_navigation_to_page_2(self, mock_update, mock_context, mock_q):
         """Navigating to page 2 shows second work."""

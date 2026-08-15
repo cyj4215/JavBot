@@ -15,7 +15,7 @@ from telegram.ext import ContextTypes
 from ..models import MergedWork
 from ..secure_callback import resolve_callback as _resolve_callback
 from ..secure_callback import short_callback as _short_callback
-from .common import require_auth_callback
+from .common import _get_lang, require_auth_callback
 
 if TYPE_CHECKING:
     from telegram import Update
@@ -114,18 +114,16 @@ def _build_works_page(
 @require_auth_callback
 async def works_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, q, shared) -> None:
     """Handle works browsing: works:{signed_star_name|index}."""
-    from .common import _get_lang
-
     data = q.data or ""
-    raw = _resolve_callback("works", data)
-    if raw is None:
-        await q.answer("该链接已过期", show_alert=True)
-        return
-
     lang = await _get_lang(shared, update)
 
     def _(key, *a):
         return shared.service.i18n.t(key, lang, *a)
+
+    raw = _resolve_callback("works", data)
+    if raw is None:
+        await q.answer(_("fav_expired"), show_alert=True)
+        return
 
     parts = raw.split("|", 1)
     star_name = parts[0]

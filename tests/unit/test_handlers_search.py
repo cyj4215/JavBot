@@ -46,7 +46,7 @@ class TestCancelSearchCallback:
         """Expired HMAC token → show alert."""
         mock_q.data = "cancel:bad"
         await self._call(mock_update, mock_context)
-        mock_q.answer.assert_awaited_once_with("该操作已过期", show_alert=True)
+        mock_q.answer.assert_awaited_once_with("该链接已过期，请重新搜索", show_alert=True)
 
 
 # ── Helpers ──

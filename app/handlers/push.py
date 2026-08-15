@@ -11,7 +11,7 @@ from telegram.ext import ContextTypes
 from ..fav import get_favorites_manager
 from ..models import MergedWork
 from ..secure_callback import short_callback as _short_callback
-from .common import require_auth, send_photo_with_fallback
+from .common import make_t, require_auth, send_photo_with_fallback
 
 if TYPE_CHECKING:
     from telegram import Bot, Update
@@ -146,22 +146,27 @@ async def send_new_work_notification(
     from . import _get_shared
 
     shared = _get_shared()
+    lang = shared.service.i18n.DEFAULT_LANG
+
+    def _(key, *a):
+        return shared.service.i18n.t(key, lang, *a)
+
     try:
-        av_id = work.id or "未知"
-        av_date = work.date or "未知"
+        av_id = work.id or _("push_unknown")
+        av_date = work.date or _("push_unknown")
         av_title = work.title or ""
         img = work.img or ""
 
         lines = [
-            "<b>🎉 关注女优更新啦！</b>",
+            f"<b>{_('push_title')}</b>",
             "",
-            f"<b>👩 女优：</b>{html.escape(actress_name)}",
-            f"<b>🎬 番号：</b><code>{html.escape(av_id)}</code>",
+            f"<b>{_('push_actress')}</b>{html.escape(actress_name)}",
+            f"<b>{_('push_av_id')}</b><code>{html.escape(av_id)}</code>",
         ]
-        if av_date != "未知":
-            lines.append(f"<b>📅 日期：</b>{html.escape(av_date)}")
+        if av_date != _("push_unknown"):
+            lines.append(f"<b>{_('push_date')}</b>{html.escape(av_date)}")
         if av_title:
-            lines.append(f"<b>📝 标题：</b>{html.escape(av_title[:80])}")
+            lines.append(f"<b>{_('push_title_label')}</b>{html.escape(av_title[:80])}")
 
         full_text = "\n".join(lines)
 
@@ -169,12 +174,12 @@ async def send_new_work_notification(
             [
                 [
                     InlineKeyboardButton(
-                        f"🧲 搜索 {av_id} 磁力", callback_data=_short_callback("magnet", av_id)
+                        _("search_magnet_for", av_id), callback_data=_short_callback("magnet", av_id)
                     )
                 ],
                 [
                     InlineKeyboardButton(
-                        f"👩 查询 {actress_name}",
+                        _("push_query_btn", actress_name),
                         callback_data=_short_callback("favquery", actress_name),
                     )
                 ],
@@ -196,22 +201,21 @@ async def send_new_work_notification(
 @require_auth
 async def push_toggle_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, shared) -> None:
     user = update.effective_user
+    _ = await make_t(shared, update)
     favorites_manager = await get_favorites_manager()
 
     if not context.args:
         settings = await favorites_manager.get_push_settings(user.id)
-        status = "✅ 已开启" if settings.get("push_enabled", True) else "❌ 已关闭"
-        await msg.reply_text(
-            f"📰 新作品推送状态：{status}\n\n使用 /push on 开启推送\n使用 /push off 关闭推送"
-        )
+        status = _("push_status_on") if settings.get("push_enabled", True) else _("push_status_off")
+        await msg.reply_text(_("push_status", status))
         return
 
     action = context.args[0].lower()
     if action in ["on", "enable", "开启"]:
         await favorites_manager.set_push_enabled(user.id, True)
-        await msg.reply_text("✅ 已开启新作品推送\n\n当你关注的女优有新作品时，我会及时通知你！")
+        await msg.reply_text(_("push_enabled_msg"))
     elif action in ["off", "disable", "关闭"]:
         await favorites_manager.set_push_enabled(user.id, False)
-        await msg.reply_text("❌ 已关闭新作品推送")
+        await msg.reply_text(_("push_disabled_msg"))
     else:
-        await msg.reply_text("用法：/push [on|off]")
+        await msg.reply_text(_("push_usage"))

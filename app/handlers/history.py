@@ -11,7 +11,7 @@ from telegram.ext import ContextTypes
 from ..fav import get_favorites_manager
 from ..formatters import looks_like_av_id
 from ..secure_callback import short_callback as _short_callback
-from .common import require_auth
+from .common import make_t, require_auth
 
 if TYPE_CHECKING:
     from telegram import Message, Update
@@ -26,6 +26,7 @@ def _render_history_page(
     queries: list[dict],
     page: int,
     total: int,
+    _t=lambda k, *a: k,
 ) -> tuple[str, InlineKeyboardMarkup]:
     total_pages = max(1, (total + _HISTORY_PER_PAGE - 1) // _HISTORY_PER_PAGE)
     page = max(1, min(page, total_pages))
@@ -35,8 +36,8 @@ def _render_history_page(
     page_queries = queries[start:end]
 
     lines = [
-        "<b>📜 最近搜索</b>",
-        f"共 {total} 条记录",
+        f"<b>{_t('history_title')}</b>",
+        _t("history_total", total),
         "",
     ]
     for idx, q in enumerate(page_queries, start + 1):
@@ -46,10 +47,10 @@ def _render_history_page(
 
     if total_pages > 1:
         lines.append("")
-        lines.append(f"第 {page}/{total_pages} 页")
+        lines.append(_t("fav_page_info", page, total_pages))
 
     lines.append("")
-    lines.append("<i>点击按钮重新查询</i>")
+    lines.append(_t("history_hint"))
 
     keyboard = []
     for q in page_queries:
@@ -72,7 +73,7 @@ def _render_history_page(
     if nav_row:
         keyboard.append(nav_row)
 
-    keyboard.append([InlineKeyboardButton("🔄 返回主菜单", callback_data="menu:search")])
+    keyboard.append([InlineKeyboardButton(_t("menu_return"), callback_data="menu:search")])
 
     return "\n".join(lines), InlineKeyboardMarkup(keyboard)
 
@@ -82,6 +83,7 @@ async def history_cmd(
     update: Update, context: ContextTypes.DEFAULT_TYPE, msg: Message, shared
 ) -> None:
     user = update.effective_user
+    _ = await make_t(shared, update)
     page = 1
     if context.args and context.args[0].lstrip("-").isdigit():
         page = max(1, int(context.args[0]))
@@ -90,10 +92,10 @@ async def history_cmd(
     queries = await fav_mgr.get_recent_favorite_queries(user.id, limit=_MAX_HISTORY)
 
     if not queries:
-        await msg.reply_text("📜 暂无搜索历史。\n\n使用 /s 名字 查询女优信息，搜索记录会自动保存。")
+        await msg.reply_text(_("history_empty"))
         return
 
-    text, markup = _render_history_page(queries, page, len(queries))
+    text, markup = _render_history_page(queries, page, len(queries), _t=_)
 
     await msg.reply_text(
         text,
@@ -105,15 +107,16 @@ async def history_cmd(
 
 async def history_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     from . import _get_shared
-    from .common import is_allowed
+    from .common import is_allowed, make_t
 
     shared = _get_shared()
     q = update.callback_query
     if not q or not q.message:
         return
 
+    _ = await make_t(shared, update)
     if not is_allowed(update, shared.config.allowed_user_ids):
-        await q.answer("无权限使用", show_alert=True)
+        await q.answer(_("no_permission_alert"), show_alert=True)
         return
 
     data = q.data or ""
@@ -124,11 +127,11 @@ async def history_page_callback(update: Update, context: ContextTypes.DEFAULT_TY
     queries = await fav_mgr.get_recent_favorite_queries(user.id, limit=_MAX_HISTORY)
 
     if not queries:
-        await q.edit_message_text("暂无搜索历史。")
+        await q.edit_message_text(_("history_empty"))
         return
 
     await q.answer()
-    text, markup = _render_history_page(queries, page, len(queries))
+    text, markup = _render_history_page(queries, page, len(queries), _t=_)
 
     await q.edit_message_text(
         text,

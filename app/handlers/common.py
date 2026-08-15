@@ -126,7 +126,7 @@ def require_auth(
         if not msg:
             return
         if not is_allowed(update, shared.config.allowed_user_ids):
-            await msg.reply_text("无权限使用此机器人。")
+            await msg.reply_text(shared.service.i18n.t("no_permission"))
             return
         await func(update, context, msg, shared, *args, **kwargs)
 
@@ -147,7 +147,7 @@ def require_auth_callback(
         if not q or not q.message:
             return
         if not is_allowed(update, shared.config.allowed_user_ids):
-            await q.answer("无权限使用", show_alert=True)
+            await q.answer(shared.service.i18n.t("no_permission_alert"), show_alert=True)
             return
         return await func(update, context, q, shared, *args, **kwargs)
 
@@ -163,7 +163,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     if not is_allowed(update, shared.config.allowed_user_ids):
-        await msg.reply_text("无权限使用此机器人。")
+        await msg.reply_text(shared.service.i18n.t("no_permission"))
         return
 
     lang = await _get_lang(shared, update)
@@ -199,7 +199,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     if not is_allowed(update, shared.config.allowed_user_ids):
-        await msg.reply_text("无权限使用此机器人。")
+        await msg.reply_text(shared.service.i18n.t("no_permission"))
         return
 
     lang = await _get_lang(shared, update)
@@ -239,14 +239,14 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     msg = cast(Message, q.message)
 
-    if not is_allowed(update, shared.config.allowed_user_ids):
-        await q.answer("无权限使用", show_alert=True)
-        return
-
     lang = await _get_lang(shared, update)
 
     def _(key, *a):
         return shared.service.i18n.t(key, lang, *a)
+
+    if not is_allowed(update, shared.config.allowed_user_ids):
+        await q.answer(_("no_permission_alert"), show_alert=True)
+        return
 
     data = q.data or ""
     if not data.startswith("menu:"):
@@ -283,18 +283,19 @@ async def callback_search(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     q = update.callback_query
     if not q or not q.message:
         return
-    if not is_allowed(update, shared.config.allowed_user_ids):
-        await q.answer("无权限使用", show_alert=True)
-        return
 
     data = q.data or ""
+    lang = await _get_lang(shared, update)
+
+    def _(key, *a):
+        return shared.service.i18n.t(key, lang, *a)
+
+    if not is_allowed(update, shared.config.allowed_user_ids):
+        await q.answer(_("no_permission_alert"), show_alert=True)
+        return
+
     query = _resolve_callback("search", data)
     if query is None:
-        lang = await _get_lang(shared, update)
-
-        def _(key, *a):
-            return shared.service.i18n.t(key, lang, *a)
-
         await q.answer(_("fav_expired"), show_alert=True)
         return
     await q.answer(f"🔍 {query}")
@@ -311,18 +312,19 @@ async def callback_magnet(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     q = update.callback_query
     if not q or not q.message:
         return
-    if not is_allowed(update, shared.config.allowed_user_ids):
-        await q.answer("无权限使用", show_alert=True)
-        return
 
     data = q.data or ""
+    lang = await _get_lang(shared, update)
+
+    def _(key, *a):
+        return shared.service.i18n.t(key, lang, *a)
+
+    if not is_allowed(update, shared.config.allowed_user_ids):
+        await q.answer(_("no_permission_alert"), show_alert=True)
+        return
+
     query = _resolve_callback("magnet", data)
     if query is None:
-        lang = await _get_lang(shared, update)
-
-        def _(key, *a):
-            return shared.service.i18n.t(key, lang, *a)
-
         await q.answer(_("fav_expired"), show_alert=True)
         return
     await q.answer(f"🧲 {query}")
