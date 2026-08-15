@@ -106,6 +106,7 @@ class ActressService:
             av_meta_cache=self.av_meta_cache,
             javbus_limiter=self._javbus_limiter,
             uncensored=uncensored,
+            magnet_search_module=self._magnet_search,
         )
         self._name_match_svc = name_match_service or NameMatchService(
             javbus_util=self.javbus,

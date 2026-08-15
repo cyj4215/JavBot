@@ -110,7 +110,10 @@ class JavBusService:
                 "获取JavBus磁力链接失败: av_id=%s", av_id, exc_info=True
             )
 
-        sukebei_magnets = MagnetSearch().search(av_id, max(0, limit - len(javbus_magnets)), 20)
+        magnet_search = self._magnet_search if self._magnet_search is not None else MagnetSearch()
+        sukebei_magnets = magnet_search.search(
+            av_id, max(0, limit - len(javbus_magnets)), 20
+        )
 
         seen: set = set()
         result: list[MagnetLink] = []

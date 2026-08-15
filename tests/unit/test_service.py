@@ -9,7 +9,14 @@ _jvav_mock = MagicMock()
 _jvav_mock.JavBusUtil = MagicMock
 sys.modules["jvav"] = _jvav_mock
 
-from app.models import ActorSearchResult, ActressProfile, MergedWork, SocialLink, WikiExtra
+from app.models import (
+    ActorSearchResult,
+    ActressProfile,
+    MagnetLink,
+    MergedWork,
+    SocialLink,
+    WikiExtra,
+)
 from app.service import ActressService
 
 
@@ -272,3 +279,29 @@ class TestQueryProfileAsync:
         result = await svc.query_profile_async("三上悠亜")
         assert result.avatar_url is None
         assert result.found
+
+
+class TestMagnetSearchInjection:
+    """Proxy-configured MagnetSearch must be wired into JavBusService."""
+
+    def test_magnet_search_injected(self):
+        """ActressService 构造时把带代理的 MagnetSearch 注入 JavBusService。"""
+        s = ActressService()
+        assert s._javbus_svc._magnet_search is s._magnet_search
+
+    @pytest.mark.asyncio
+    async def test_get_av_magnets_uses_injected_instance(self):
+        """get_av_magnets 使用注入的实例，而非新建无代理实例。"""
+        s = ActressService()
+        s.javbus.get_av_magnets = MagicMock(return_value=(200, []))
+        s._javbus_svc._javbus_limiter = MagicMock()  # 避免真实限流 sleep
+        fake = MagicMock()
+        fake.search = MagicMock(
+            return_value=[
+                MagnetLink(title="T", magnet="magnet:?xt=urn:btih:abc", size="1G")
+            ]
+        )
+        s._javbus_svc._magnet_search = fake
+        result = s._javbus_svc.get_av_magnets("SSIS-123", 2)
+        fake.search.assert_called_once_with("SSIS-123", 2, 20)
+        assert len(result) == 1
