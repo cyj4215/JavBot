@@ -167,7 +167,6 @@ def build_app() -> Application:
     app.add_handler(CallbackQueryHandler(callback_myfav_page, pattern=r"^myfav:page:"))
     app.add_handler(CallbackQueryHandler(callback_myfav_sort, pattern=r"^myfav:sort:"))
     app.add_handler(CallbackQueryHandler(rank_page_callback, pattern=r"^rank:"))
-    app.add_handler(CallbackQueryHandler(rank_page_callback, pattern=r"^rank_retry:"))
     app.add_handler(CallbackQueryHandler(language_callback, pattern=r"^lang:"))
     app.add_handler(CallbackQueryHandler(cancel_search_callback, pattern=r"^cancel:"))
     app.add_handler(CallbackQueryHandler(history_page_callback, pattern=r"^hist:"))
@@ -184,15 +183,13 @@ def build_app() -> Application:
             check_and_push_new_works, interval=config.push_check_interval, first=10
         )
         job_queue.run_daily(scheduled_cleanup, time=datetime_time(hour=3, minute=0))
+        job_queue.run_repeating(
+            check_and_send_digests,
+            interval=config.push_digest_interval,
+            first=config.push_digest_interval,
+        )
         logging.info("已启用新作品推送检查，间隔: %s秒", config.push_check_interval)
-
-        if config.push_digest_enabled:
-            job_queue.run_repeating(
-                check_and_send_digests,
-                interval=config.push_digest_interval,
-                first=config.push_digest_interval,
-            )
-            logging.info("已启用每日汇总推送，间隔: %s秒", config.push_digest_interval)
+        logging.info("已启用每日汇总推送，间隔: %s秒", config.push_digest_interval)
 
     return app
 

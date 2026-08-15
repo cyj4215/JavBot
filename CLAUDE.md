@@ -128,6 +128,8 @@ All settings via environment variables (see `.env.example`).
 - `UNCENSORED` — set `1` to include uncensored AV content
 - `PUSH_ENABLED` — periodic push of new works to users who opted in
 - `PUSH_CHECK_INTERVAL` — seconds between push checks (default 3600)
+- `PUSH_DIGEST_ENABLED` — daily digest push (instant/digest/off per-user modes)
+- `PUSH_DIGEST_INTERVAL` — seconds between digest sends (default 86400)
 - `FAVORITES_DB_PATH` / `CALLBACK_DB_PATH` — persistence paths
 - `LOG_LEVEL` — DEBUG/INFO/WARNING/ERROR
 - Various `*_LIMIT` / `*_TTL` env vars for pagination and cache control

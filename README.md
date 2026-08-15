@@ -177,6 +177,8 @@ JavDb 使用了 Cloudflare Bot Management，它会检测 TLS 指纹（JA3）:
 | `PROFILE_CACHE_TTL` | | `1800` | 女优资料缓存 TTL (秒) |
 | `PUSH_ENABLED` | | `1` | 开启新作推送功能 |
 | `PUSH_CHECK_INTERVAL` | | `3600` | 推送检查间隔 (秒) |
+| `PUSH_DIGEST_ENABLED` | | `1` | 开启每日汇总推送 |
+| `PUSH_DIGEST_INTERVAL` | | `86400` | 汇总推送检查间隔（秒） |
 | `PUSH_BATCH_DELAY` | | `5` | 推送批次间延迟（秒） |
 | `MAGNET_CACHE_TTL` | | `300` | 磁力搜索缓存 TTL（秒） |
 

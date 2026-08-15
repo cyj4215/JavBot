@@ -161,6 +161,11 @@ async def send_new_work_notification(
 
     shared = _get_shared()
     lang = shared.service.i18n.DEFAULT_LANG
+    try:
+        fav_mgr = await get_favorites_manager()
+        lang = await fav_mgr.get_user_language(user_id)
+    except Exception:
+        pass
 
     def _(key, *a):
         return shared.service.i18n.t(key, lang, *a)
