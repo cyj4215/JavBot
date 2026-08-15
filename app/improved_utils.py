@@ -28,6 +28,8 @@ def _make_session(proxy_addr: str = "") -> requests.Session:
 def download_image(
     url: str, proxy_addr: str = "", max_retries: int = 3, session: requests.Session | None = None
 ) -> bytes | None:
+    from .health import SourceStatus
+
     if not url:
         logger.debug("图片URL为空，跳过下载")
         return None
@@ -50,6 +52,7 @@ def download_image(
                 )
                 if attempt == max_retries - 1:
                     logger.error(f"下载失败（已达最大重试次数）：{url}")
+                    SourceStatus.fail("images", "download failed")
                     return None
                 continue
 
@@ -59,10 +62,12 @@ def download_image(
                 )
                 if attempt == max_retries - 1:
                     logger.error(f"响应内容过小（已达最大重试次数）：{url}")
+                    SourceStatus.fail("images", "download failed")
                     return None
                 continue
 
             logger.info(f"成功下载图片：{url}，大小：{len(resp.content)} bytes")
+            SourceStatus.ok("images")
             return resp.content
 
         except Exception as e:
@@ -77,8 +82,10 @@ def download_image(
 
             if attempt == max_retries - 1:
                 logger.error(f"下载失败（已达最大重试次数）：{url}")
+                SourceStatus.fail("images", "download failed")
                 return None
 
+    SourceStatus.fail("images", "download failed")
     return None
 
 
@@ -96,6 +103,8 @@ _CURL_HEADERS = [
 
 def download_image_via_curl(url: str, proxy_addr: str = "") -> bytes | None:
     """Download image bytes via curl subprocess (bypasses Cloudflare JA3 blocking)."""
+    from .health import SourceStatus
+
     if not url or not url.startswith("http"):
         logger.warning("skipping non-http URL: %.100s", url)
         return None
@@ -108,6 +117,7 @@ def download_image_via_curl(url: str, proxy_addr: str = "") -> bytes | None:
 
         result = subprocess.run(cmd, capture_output=True, timeout=25)
         if result.returncode == 0 and len(result.stdout) > 512:
+            SourceStatus.ok("images")
             return result.stdout
         logger.warning(
             "curl image download failed (rc=%d, size=%d): %.100s",
@@ -117,4 +127,5 @@ def download_image_via_curl(url: str, proxy_addr: str = "") -> bytes | None:
         )
     except Exception as e:
         logger.warning("curl image download error: %s for %.100s", e, url)
+    SourceStatus.fail("images", "download failed")
     return None

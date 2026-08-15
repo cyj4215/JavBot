@@ -1,5 +1,7 @@
 import time
+
 import pytest
+
 from app.cache import TTLCache
 
 
@@ -66,3 +68,14 @@ class TestTTLCache:
         c = TTLCache(max_size=0, default_ttl=0)
         assert c.max_size == 64
         assert c.default_ttl == 30
+
+    def test_hits_and_misses_counted(self):
+        cache = TTLCache(max_size=64, default_ttl=60)
+        cache.set("a", 1)
+        assert cache.get("a") == 1
+        assert cache.get("missing") is None
+        stats = cache.stats()
+        assert stats["hits"] == 1
+        assert stats["misses"] == 1
+        assert stats["size"] == 1
+        assert 0 < stats["hit_rate"] < 1

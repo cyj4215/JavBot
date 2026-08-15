@@ -54,6 +54,8 @@ class MagnetSearch:
         """Search sukebei.nyaa.si, return parsed MagnetLinks."""
         import httpx
 
+        from .health import SourceStatus
+
         try:
             resp = httpx.get(
                 f"{BASE_URL}/",
@@ -63,9 +65,13 @@ class MagnetSearch:
                 proxy=self._proxy if self._proxy else None,
             )
             if resp.status_code != 200:
+                SourceStatus.fail("sukebei", f"http {resp.status_code}")
                 return []
         except httpx.RequestError:
+            SourceStatus.fail("sukebei", "request error")
             return []
+
+        SourceStatus.ok("sukebei")
 
         try:
             soup = BeautifulSoup(resp.text, "lxml")
@@ -91,6 +97,7 @@ class MagnetSearch:
                     break
             return results
         except Exception as exc:
+            SourceStatus.fail("sukebei", "parse error")
             logging.getLogger(__name__).warning("parse sukebei failed: %s", exc)
             return []
 

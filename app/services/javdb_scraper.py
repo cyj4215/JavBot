@@ -51,10 +51,20 @@ def _fetch(url: str) -> str | None:
     if _HAS_CURL_CFFI:
         try:
             resp = curl_requests.get(url, impersonate="chrome131", timeout=_CURL_TIMEOUT)
+            from ..health import SourceStatus
+
+            SourceStatus.ok("javdb")
             return resp.text  # type: ignore[no-any-return]
         except Exception as e:
             logger.warning("curl_cffi failed: %s, falling back to subprocess curl", e)
-    return _curl_get(url)
+    result = _curl_get(url)
+    from ..health import SourceStatus
+
+    if result is None:
+        SourceStatus.fail("javdb", "fetch failed")
+    else:
+        SourceStatus.ok("javdb")
+    return result
 
 
 def _curl_get(url: str) -> str | None:

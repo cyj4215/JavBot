@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import time as datetime_time
 
 from dotenv import load_dotenv
@@ -15,6 +16,7 @@ from telegram.ext import (
 from .config import BotConfig
 from .fav import get_favorites_manager
 from .handlers import _set_shared
+from .handlers.admin import admin_cmd
 from .handlers.common import callback_magnet, callback_search, help_cmd, menu_callback, start
 from .handlers.favorites import (
     callback_favnow,
@@ -45,6 +47,8 @@ from .scheduler import scheduled_cleanup
 from .service import ActressService
 
 load_dotenv()
+
+START_TIME = time.time()
 
 
 async def post_init(application: Application) -> None:
@@ -155,6 +159,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("myfav", my_favorites_cmd))
     app.add_handler(CommandHandler("favlatest", favorites_latest_cmd))
     app.add_handler(CommandHandler("push", push_toggle_cmd))
+    app.add_handler(CommandHandler("admin", admin_cmd))
     app.add_handler(CallbackQueryHandler(push_mode_callback, pattern=r"^pushmode:"))
     app.add_handler(CallbackQueryHandler(callback_favquery, pattern=r"^favquery:"))
     app.add_handler(CallbackQueryHandler(callback_favnow, pattern=r"^favnow:"))
@@ -199,6 +204,10 @@ def main() -> None:
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
     logging.getLogger("jvav.utils").setLevel(logging.CRITICAL)
+
+    from .health import install_error_handler
+
+    install_error_handler()
 
     app = build_app()
     app.run_polling(drop_pending_updates=True)

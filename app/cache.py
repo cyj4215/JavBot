@@ -20,6 +20,8 @@ class TTLCache:
         self._dirty = False
         self._last_save = 0.0
         self._save_debounce = 5.0
+        self.hits = 0
+        self.misses = 0
         self._load()
 
     def _load(self) -> None:
@@ -72,13 +74,16 @@ class TTLCache:
         with self._lock:
             item = self._data.get(key)
             if not item:
+                self.misses += 1
                 return None
             expire_at, value = item
             if expire_at < now:
                 self._data.pop(key, None)
                 self._dirty = True
+                self.misses += 1
                 return None
             self._data.move_to_end(key)
+            self.hits += 1
             return value
 
     def set(self, key: Any, value: Any, ttl: int | None = None) -> None:
@@ -140,3 +145,14 @@ class TTLCache:
     def __len__(self) -> int:
         with self._lock:
             return len(self._data)
+
+    def stats(self) -> dict[str, int | float]:
+        """Cache 统计：条目数、命中/未命中、命中率。"""
+        with self._lock:
+            total = self.hits + self.misses
+            return {
+                "size": len(self._data),
+                "hits": self.hits,
+                "misses": self.misses,
+                "hit_rate": round(self.hits / total, 4) if total else 0.0,
+            }

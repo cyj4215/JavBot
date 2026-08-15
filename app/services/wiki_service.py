@@ -9,6 +9,7 @@ import httpx
 import wikipediaapi
 from bs4 import BeautifulSoup
 
+from ..health import SourceStatus
 from ..models import SocialLink, WikiExtra
 
 if TYPE_CHECKING:
@@ -61,6 +62,7 @@ class WikiService:
             page = wiki.page(topic)
             if not page or not page.exists():
                 logger.debug(f"维基百科页面不存在: {topic}")
+                SourceStatus.ok("wiki")
                 self.wiki_page_cache.set(cache_key, {})
                 return {}
 
@@ -74,6 +76,7 @@ class WikiService:
                     "lang": linked.language,
                 }
                 logger.debug(f"找到语言链接到 {to_lang}: {result}")
+                SourceStatus.ok("wiki")
                 self.wiki_page_cache.set(cache_key, result)
                 return result
 
@@ -83,10 +86,12 @@ class WikiService:
                 "lang": from_lang,
             }
             logger.debug(f"使用原始页面: {result}")
+            SourceStatus.ok("wiki")
             self.wiki_page_cache.set(cache_key, result)
             return result
         except Exception as e:
             logger.warning("维基百科查询异常: %s", e, exc_info=True)
+            SourceStatus.fail("wiki", str(e))
             return {}
 
     def wiki_aliases(self, name: str) -> list[str]:
